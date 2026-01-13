@@ -15,7 +15,7 @@ export enum StaffPosition {
 
 export interface User {
   id: string;
-  username: string; // Tên đăng nhập đơn giản
+  username: string;
   name: string;
   email: string;
   password?: string;
@@ -29,15 +29,10 @@ export interface User {
 
 export interface TeacherScoreRow {
   teacherId: string;
-  // A. TT, CT...
   tt: number; dn: number; sh: number; nq: number; qt: number;
-  // B.I HSSS
   ga: number; sd: number; dg: number; lbg: number; tb: number; dt_hsss: number;
-  // B.II Ngày công
   ngc: number; bc: number; dt_ngaycong: number;
-  // B.IV CTCM
   tg: number; thct: number; clbm: number; dt_ctcm: number;
-  // Others
   chuNhiem: number;
   kiemNhiem: number;
   congTacKhac: number;
@@ -69,6 +64,7 @@ export interface ScheduleItem {
   className: string;
   period: number;
   dayOfWeek: number;
+  session: 'Morning' | 'Afternoon';
   note?: string;
   isSubstitute?: boolean;
 }

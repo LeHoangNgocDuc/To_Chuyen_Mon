@@ -7,6 +7,15 @@ interface SubstitutePageProps {
   user: User;
 }
 
+const ABSENCE_REASONS = [
+  'Công tác',
+  'Việc riêng',
+  'Nghỉ ốm',
+  'Thai sản',
+  'Đã bồi hoàn tiết',
+  'Khác'
+];
+
 const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
   const [substitutes, setSubstitutes] = useState<SubstituteRequest[]>(MOCK_SUBSTITUTES);
   const [showModal, setShowModal] = useState(false);
@@ -40,7 +49,7 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
           <span className="font-bold text-slate-700 text-sm">Danh sách phiếu dạy thay học kỳ này</span>
           <div className="flex gap-2">
-            <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">Tự động cộng điểm thi đua (+1.0đ/tiết)</span>
+            <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">Tự động cộng điểm thi đua (+0.25đ/tiết)</span>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -144,7 +153,9 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Lý do nghỉ</label>
-                <textarea rows={2} placeholder="Ví dụ: Công tác, Ốm, Việc riêng..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700"></textarea>
+                <select className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700">
+                   {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
               </div>
 
               <div className="bg-blue-50 rounded-2xl p-4 flex items-center gap-3 border border-blue-100">
@@ -153,7 +164,7 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-blue-800">Quyền lợi giáo viên dạy thay</div>
-                  <p className="text-[10px] text-blue-600 font-medium">Hệ thống sẽ tự động cộng 1.0 điểm vào chuyên mục thi đua "Ngày công" cho giáo viên được phân công ngay sau khi duyệt.</p>
+                  <p className="text-[10px] text-blue-600 font-medium">Hệ thống sẽ tự động cộng 0.25 điểm vào chuyên mục thi đua "Dạy thay (R)" cho giáo viên được phân công ngay sau khi duyệt.</p>
                 </div>
               </div>
             </div>

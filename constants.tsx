@@ -27,8 +27,9 @@ export const MOCK_USERS: User[] = [
 ];
 
 export const MOCK_SCHEDULE: ScheduleItem[] = [
-  { id: 's1', teacherId: '2', subject: 'Toán', className: '9/1', period: 1, dayOfWeek: 2 },
-  { id: 's2', teacherId: '3', subject: 'Tin', className: '8/2', period: 3, dayOfWeek: 3 },
+  // Fixed missing 'session' property on lines 30 and 31
+  { id: 's1', teacherId: '2', subject: 'Toán', className: '9/1', period: 1, dayOfWeek: 2, session: 'Morning' },
+  { id: 's2', teacherId: '3', subject: 'Tin', className: '8/2', period: 3, dayOfWeek: 3, session: 'Morning' },
 ];
 
 export const MOCK_SUBSTITUTES: SubstituteRequest[] = [

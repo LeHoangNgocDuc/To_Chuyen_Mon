@@ -90,6 +90,16 @@ const App: React.FC = () => {
     setUsers(users.map(u => u.id === id ? { ...u, isApproved: true } : u));
   };
 
+  const handleDeleteUser = (id: string) => {
+    if (id === currentUser?.id) {
+      alert('Bạn không thể xóa chính mình!');
+      return;
+    }
+    if (window.confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi tổ?')) {
+      setUsers(users.filter(u => u.id !== id));
+    }
+  };
+
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 font-sans">
@@ -186,7 +196,7 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard user={currentUser} year={currentYear} />;
       case 'schedule': return <SchedulePage user={currentUser} />;
-      case 'assignment': return <AssignmentPage user={currentUser} users={users} onApprove={handleApprove} />;
+      case 'assignment': return <AssignmentPage user={currentUser} users={users} onApprove={handleApprove} onDeleteUser={handleDeleteUser} />;
       case 'substitute': return <SubstitutePage user={currentUser} />;
       case 'competition': return <CompetitionPage user={currentUser} />;
       case 'documents': return <DocumentPage user={currentUser} />;
