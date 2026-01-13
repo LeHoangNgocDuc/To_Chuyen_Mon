@@ -20,15 +20,13 @@ export interface User {
   email: string;
   password?: string;
   role: UserRole;
-  subject: 'Toán' | 'Tin' | 'Khác';
+  subject: string;
   staffPosition?: StaffPosition;
   isApproved: boolean;
-  assignedClasses?: string[];
-  gradeLevel?: number[]; // Khối 6, 7, 8, 9
+  assignedClasses: string[]; // Lưu dạng ["6/1", "7/2"]
+  gradeLevel?: number[]; 
   isChuNhiem?: boolean;
-  chuNhiemLop?: string;
-  kiemNhiem?: string;
-  duties?: string[];
+  duties: string[]; // Danh sách chức vụ kiêm nhiệm
 }
 
 export interface TeacherScoreRow {
@@ -57,7 +55,9 @@ export interface ScheduleItem {
 export interface SubstituteRequest {
   id: string;
   absentTeacherId: string;
+  absentTeacherName?: string;
   substituteTeacherId: string;
+  substituteTeacherName?: string;
   reason: string;
   date: string;
   period: number;
@@ -66,25 +66,20 @@ export interface SubstituteRequest {
   pointsAwarded: number;
 }
 
-// Added missing types to resolve import errors
-export enum DocType {
-  GKI = 'GKI',
-  CKI = 'CKI',
-  GKII = 'GKII',
-  CKII = 'CKII'
-}
-
 export enum DocStatus {
   Approved = 'Đã duyệt',
   Draft = 'Chờ duyệt',
   NeedsEdit = 'Cần chỉnh sửa'
 }
 
+// Added DocType to resolve "Module '"./types"' has no exported member 'DocType'"
+export type DocType = string;
+
 export interface Document {
   id: string;
   title: string;
   category: 'Đề cương' | 'Đề thi';
-  type: string;
+  type: DocType;
   grade: number;
   authorId: string;
   status: DocStatus;
@@ -101,13 +96,12 @@ export interface SystemNotification {
   isImportant?: boolean;
 }
 
+// Added TeachingDemo to resolve "Module '"./types"' has no exported member 'TeachingDemo'"
 export interface TeachingDemo {
   id: string;
-  date: string;
   teacherId: string;
-  className: string;
-  period: number;
   topic: string;
-  result: string;
-  notes?: string;
+  date: string;
+  className: string;
+  rating: string;
 }
