@@ -24,6 +24,10 @@ export interface User {
   staffPosition?: StaffPosition;
   isApproved: boolean;
   assignedClasses?: string[];
+  gradeLevel?: number[]; // Khối 6, 7, 8, 9
+  isChuNhiem?: boolean;
+  chuNhiemLop?: string;
+  kiemNhiem?: string;
   duties?: string[];
 }
 
@@ -38,25 +42,6 @@ export interface TeacherScoreRow {
   congTacKhac: number;
 }
 
-export interface TeachingDemo {
-  id: string;
-  teacherId: string;
-  topic: string;
-  date: string;
-  className: string;
-  period: number;
-  status: 'Scheduled' | 'Completed';
-}
-
-export interface SystemNotification {
-  id: string;
-  sender: string;
-  role: string;
-  content: string;
-  date: string;
-  isImportant: boolean;
-}
-
 export interface ScheduleItem {
   id: string;
   teacherId: string;
@@ -69,32 +54,6 @@ export interface ScheduleItem {
   isSubstitute?: boolean;
 }
 
-export enum DocType {
-  GKI = 'GKI',
-  CKI = 'CKI',
-  GKII = 'GKII',
-  CKII = 'CKII'
-}
-
-export enum DocStatus {
-  Draft = 'Chưa duyệt',
-  Approved = 'Đã duyệt',
-  NeedsEdit = 'Cần chỉnh sửa'
-}
-
-export interface Document {
-  id: string;
-  title: string;
-  type: DocType;
-  category: 'Đề cương' | 'Đề thi';
-  grade: number;
-  authorId: string;
-  uploadDate: string;
-  fileUrl: string;
-  status: DocStatus;
-  isSpecialNeeds?: boolean;
-}
-
 export interface SubstituteRequest {
   id: string;
   absentTeacherId: string;
@@ -105,4 +64,50 @@ export interface SubstituteRequest {
   className: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   pointsAwarded: number;
+}
+
+// Added missing types to resolve import errors
+export enum DocType {
+  GKI = 'GKI',
+  CKI = 'CKI',
+  GKII = 'GKII',
+  CKII = 'CKII'
+}
+
+export enum DocStatus {
+  Approved = 'Đã duyệt',
+  Draft = 'Chờ duyệt',
+  NeedsEdit = 'Cần chỉnh sửa'
+}
+
+export interface Document {
+  id: string;
+  title: string;
+  category: 'Đề cương' | 'Đề thi';
+  type: string;
+  grade: number;
+  authorId: string;
+  status: DocStatus;
+  uploadDate: string;
+  fileUrl?: string;
+}
+
+export interface SystemNotification {
+  id: string;
+  role: string;
+  date: string;
+  sender: string;
+  content: string;
+  isImportant?: boolean;
+}
+
+export interface TeachingDemo {
+  id: string;
+  date: string;
+  teacherId: string;
+  className: string;
+  period: number;
+  topic: string;
+  result: string;
+  notes?: string;
 }

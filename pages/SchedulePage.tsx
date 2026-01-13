@@ -43,10 +43,6 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
     fetchSchedule();
   }, [user.id]);
 
-  const getScheduleFor = (day: number, period: number, session: 'Morning' | 'Afternoon') => {
-    return schedule.find(s => s.dayOfWeek === day && s.period === period && s.session === session);
-  };
-
   const handleSaveSchedule = async () => {
     if (!newEntry.className) {
       alert('Vui lòng chọn lớp học!');
@@ -56,8 +52,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
     const dataToSave = { 
       ...newEntry, 
       id: `sch-${Date.now()}-${user.id}`,
-      teacherId: user.id,
-      subject: user.subject
+      teacherId: user.id
     };
     try {
       await fetch(SCRIPT_URL, {
@@ -66,7 +61,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
         body: JSON.stringify({ type: 'schedule', action: 'save', data: dataToSave })
       });
       setSchedule([...schedule.filter(s => s.id !== dataToSave.id), dataToSave as ScheduleItem]);
-      alert('Đã cập nhật lịch dạy cá nhân vào Sheet!');
+      alert('Đã cập nhật lịch dạy cá nhân!');
       setShowAdjustModal(false);
     } catch (e) {
       alert('Lỗi khi lưu lịch dạy!');
@@ -78,25 +73,18 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
   const days = [2, 3, 4, 5, 6, 7];
   const periods = [1, 2, 3, 4, 5];
 
-  if (isLoading) {
-    return <div className="p-10 text-center font-black text-slate-400 uppercase tracking-widest animate-pulse italic">Đang đồng bộ lịch từ Sheet...</div>;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Thời khóa biểu: {user.name}</h1>
+          <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Thời khóa biểu cá nhân</h1>
           <div className="flex gap-4 mt-4">
              <button onClick={() => setActiveSession('Morning')} className={`text-[11px] font-black uppercase tracking-widest ${activeSession === 'Morning' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Buổi Sáng</button>
              <button onClick={() => setActiveSession('Afternoon')} className={`text-[11px] font-black uppercase tracking-widest ${activeSession === 'Afternoon' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-slate-400'}`}>Buổi Chiều</button>
           </div>
         </div>
         <button 
-          onClick={() => {
-            setNewEntry({...newEntry, className: user.assignedClasses?.[0] || ''});
-            setShowAdjustModal(true);
-          }}
+          onClick={() => setShowAdjustModal(true)}
           className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all"
         >
           Thêm/Sửa Tiết Dạy
@@ -117,7 +105,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
                 <tr key={p} className="h-28">
                   <td className="p-6 bg-slate-50/50 border-r text-center font-black text-slate-400 text-[10px]">Tiết {p}</td>
                   {days.map(d => {
-                    const item = getScheduleFor(d, p, activeSession);
+                    const item = schedule.find(s => s.dayOfWeek === d && s.period === p && s.session === activeSession);
                     return (
                       <td key={d} className="p-2 border-r group">
                         {item ? (
@@ -158,28 +146,23 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Tiết dạy</label>
-                  <select value={newEntry.period} onChange={e => setNewEntry({...newEntry, period: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
-                    {[1,2,3,4,5].map(p => <option key={p} value={p}>Tiết {p}</option>)}
-                  </select>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Lớp dạy</label>
+                  <input type="text" value={newEntry.className} onChange={e => setNewEntry({...newEntry, className: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" placeholder="VD: 9/1" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Lớp học (Hồ sơ)</label>
-                  <select value={newEntry.className} onChange={e => setNewEntry({...newEntry, className: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
-                    <option value="">-- Chọn lớp --</option>
-                    {user.assignedClasses?.map(c => <option key={c} value={c}>Lớp {c}</option>)}
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Môn học</label>
+                  <select value={newEntry.subject} onChange={e => setNewEntry({...newEntry, subject: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
+                    <option value={user.subject}>{user.subject}</option>
+                    {user.isChuNhiem && <option value="HĐ trải nghiệm">HĐ trải nghiệm</option>}
+                    <option value="Khác">Khác</option>
                   </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Môn học mặc định</label>
-                <div className="w-full bg-slate-100 p-4 rounded-2xl text-slate-400 font-black text-sm">{user.subject}</div>
               </div>
             </div>
             <div className="mt-8 flex gap-4">
               <button onClick={() => setShowAdjustModal(false)} className="flex-1 font-black text-slate-400 uppercase">Đóng</button>
-              <button disabled={isSyncing || !newEntry.className} onClick={handleSaveSchedule} className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase shadow-xl tracking-widest disabled:opacity-50">
-                {isSyncing ? 'Đang gửi...' : 'Lưu vào Sheet'}
+              <button disabled={isSyncing} onClick={handleSaveSchedule} className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase shadow-xl tracking-widest disabled:opacity-50">
+                {isSyncing ? 'Đang lưu...' : 'Lưu lịch'}
               </button>
             </div>
           </div>
