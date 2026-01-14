@@ -1,114 +1,260 @@
 
-import React from 'react';
-import { User, UserRole } from '../types';
-import { MOCK_SCHEDULE, MOCK_NOTIFICATIONS } from '../constants';
+import React, { useState } from 'react';
+import { User, UserRole, SystemNotification } from '../types';
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
+const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
 
 interface DashboardProps {
   user: User;
   year: string;
+  notifications: SystemNotification[];
+  onRefresh: () => void;
+  onUpdateProfile?: (updatedUser: User) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, year }) => {
-  const stats = [
-    { label: 'Tiết dạy tuần này', value: '18', color: 'blue' },
-    { label: 'Điểm thi đua', value: '189.4', color: 'green' },
-    { label: 'Đề cương đã duyệt', value: '1/1', color: 'purple' },
-    { label: 'Xếp hạng tổ', value: '#2', color: 'amber' },
-  ];
+const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefresh, onUpdateProfile }) => {
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const [newNotif, setNewNotif] = useState({
+    content: '',
+    executionTime: '',
+    sendEmailReminder: false,
+    isImportant: false
+  });
+
+  // Profile Edit State
+  const [editData, setEditData] = useState({
+    tempSubject: 'Toán',
+    tempGrade: '6',
+    tempClass: '1',
+    assignedClasses: [...(user.assignedClasses || [])]
+  });
+
+  const handlePostNotif = async () => {
+    if (!newNotif.content) return alert('Nội dung không được để trống!');
+    setIsPosting(true);
+    const data: SystemNotification = {
+      ...newNotif,
+      id: `notif-${Date.now()}`,
+      senderId: user.id,
+      senderName: user.name,
+      role: user.role,
+      date: new Date().toLocaleDateString('vi-VN')
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ type: 'notifications', action: 'save', data })
+      });
+      alert('Đã đăng thông báo tổ!');
+      setShowNotifModal(false);
+      onRefresh();
+    } catch (e) {
+      alert('Lỗi đăng thông báo!');
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleAddAssignment = () => {
+    const entry = `${editData.tempSubject} ${editData.tempGrade}/${editData.tempClass}`;
+    if (!editData.assignedClasses.includes(entry)) {
+      setEditData({ ...editData, assignedClasses: [...editData.assignedClasses, entry] });
+    }
+  };
+
+  const removeAssignment = (item: string) => {
+    setEditData({ ...editData, assignedClasses: editData.assignedClasses.filter(i => i !== item) });
+  };
+
+  const handleSaveProfile = async () => {
+    if (editData.assignedClasses.length === 0) return alert('Vui lòng có ít nhất một lớp phân công!');
+    
+    setIsSavingProfile(true);
+    // Tự động nhận môn chính dựa trên lớp đầu tiên được thêm vào
+    const primarySubject = editData.assignedClasses[0].split(' ')[0];
+    
+    const updatedUser = { 
+      ...user, 
+      assignedClasses: editData.assignedClasses,
+      subject: primarySubject 
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
+      });
+      alert('Đã cập nhật phân công chuyên môn và môn dạy chính!');
+      setShowProfileModal(false);
+      if (onUpdateProfile) onUpdateProfile(updatedUser);
+      onRefresh();
+    } catch (e) {
+      alert('Lỗi khi cập nhật!');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white shadow-lg shadow-blue-200 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Chào mừng, {user.name}!</h1>
-          <p className="opacity-90 font-medium">Tổ Toán - Tin | THCS Trần Hưng Đạo | Năm học {year}</p>
-          <div className="mt-4 flex gap-2">
-            <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase">{user.role}</span>
-            <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase">{user.subject}</span>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="bg-gradient-to-br from-slate-900 to-blue-900 rounded-[3rem] p-12 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full"></div>
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center">
+          <div>
+            <h1 className="text-4xl font-black mb-3 italic">Chào {user.name.split(' ').pop()}!</h1>
+            <p className="text-blue-200 font-bold uppercase tracking-[0.3em] text-[10px]">THCS TRẦN HƯNG ĐẠO • {year}</p>
+            <div className="mt-8 flex gap-3">
+              <span className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10">{user.role}</span>
+              <span className="px-5 py-2 bg-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/30">{user.subject}</span>
+            </div>
           </div>
+          <button onClick={() => {
+            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])] });
+            setShowProfileModal(true);
+          }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95">
+            Sửa phân công dạy
+          </button>
         </div>
-        <div className="hidden lg:block">
-           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-center">
-             <div className="text-3xl font-black">24</div>
-             <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Tháng 10</div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+           <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl p-10">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-black text-slate-800 uppercase italic">Thông báo Tổ</h3>
+              {(user.role === UserRole.TCM || user.role === UserRole.TP) && (
+                <button onClick={() => setShowNotifModal(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">Đăng tin mới</button>
+              )}
+            </div>
+            <div className="space-y-6">
+              {notifications.length > 0 ? notifications.map(notif => (
+                <div key={notif.id} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 hover:border-blue-200 transition-all group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 shadow-sm">{notif.senderName.charAt(0)}</div>
+                      <div>
+                         <div className="text-sm font-black text-slate-800">{notif.senderName}</div>
+                         <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{notif.role} • {notif.date}</div>
+                      </div>
+                    </div>
+                    {notif.isImportant && <span className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-[8px] font-black uppercase">Quan trọng</span>}
+                  </div>
+                  <p className="text-slate-600 font-bold leading-relaxed mb-4">{notif.content}</p>
+                  {notif.executionTime && (
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200">
+                      <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Hạn thực hiện: <span className="text-orange-600">{notif.executionTime}</span></span>
+                    </div>
+                  )}
+                  {notif.sendEmailReminder && <div className="mt-2 text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Dấu hiệu: Đã gửi nhắc nhở qua Email/Tin nhắn</div>}
+                </div>
+              )) : (
+                <div className="py-20 text-center font-black text-slate-300 italic uppercase">Chưa có thông báo mới</div>
+              )}
+            </div>
+           </div>
+        </div>
+
+        <div className="space-y-8">
+           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl">
+             <h3 className="text-lg font-black text-slate-800 uppercase italic mb-6">Trạng thái</h3>
+             <div className="space-y-4">
+                <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100">
+                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Điểm thi đua</div>
+                  <div className="text-4xl font-black text-blue-600 tracking-tighter">189.4</div>
+                </div>
+                <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
+                  <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Xếp hạng tổ</div>
+                  <div className="text-4xl font-black text-emerald-600 tracking-tighter">#2</div>
+                </div>
+             </div>
            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-slate-500 text-sm font-medium mb-1">{stat.label}</div>
-            <div className={`text-2xl font-black text-${stat.color}-600`}>{stat.value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                Lịch dạy hôm nay
-              </h3>
-              <button className="text-blue-600 text-sm font-medium hover:underline">Toàn bộ lịch</button>
-            </div>
-            <div className="space-y-3">
-              {MOCK_SCHEDULE.length > 0 ? MOCK_SCHEDULE.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-blue-100 text-blue-600 w-10 h-10 rounded-lg flex items-center justify-center font-bold">
-                      T{item.period}
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800 text-sm">Lớp {item.className} - {item.subject}</div>
-                      <div className="text-[10px] text-slate-400 font-medium italic">Sáng • Tiết {item.period}</div>
+      {/* Modal Sửa Phân Công */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6">
+           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
+              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Cập nhật phân công</h3>
+              <div className="space-y-6">
+                <div className="p-5 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 space-y-4">
+                  <div className="grid grid-cols-1 gap-2">
+                    <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
+                      {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <div className="flex gap-2">
+                      <select value={editData.tempGrade} onChange={e => setEditData({...editData, tempGrade: e.target.value})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
+                        {[6,7,8,9].map(g => <option key={g} value={g}>Khối {g}</option>)}
+                      </select>
+                      <select value={editData.tempClass} onChange={e => setEditData({...editData, tempClass: e.target.value})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
+                        {[1,2,3,4,5,6].map(c => <option key={c} value={c}>Lớp {c}</option>)}
+                      </select>
+                      <button onClick={handleAddAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg">+</button>
                     </div>
                   </div>
-                  <div className="text-xs font-bold px-2 py-1 bg-white rounded-lg border border-slate-200 text-slate-500">Chính khóa</div>
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-blue-100">
+                    {editData.assignedClasses.map(item => (
+                      <div key={item} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-[10px] font-black shadow-sm group">
+                        {item}
+                        <button onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )) : (
-                <div className="py-8 text-center text-slate-400 text-sm italic">Hôm nay không có tiết dạy</div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-amber-50 rounded-2xl p-6 border border-amber-200">
-             <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-               <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-               Lưu ý tuần này
-             </h4>
-             <p className="text-sm text-amber-700 leading-relaxed font-medium">Đề nghị giáo viên nộp đầy đủ đề cương GK1 và ma trận lên hệ thống. Tổ trưởng sẽ chốt duyệt vào chiều Thứ 6 tuần này.</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 h-fit">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            Thông báo mới
-          </h3>
-          <div className="space-y-4">
-            {MOCK_NOTIFICATIONS.map((notif) => (
-              <div key={notif.id} className="relative pl-4 border-l-2 border-slate-100 hover:border-blue-500 transition-colors pb-4 last:pb-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${notif.isImportant ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {notif.role}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-bold">{notif.date}</span>
-                </div>
-                <div className="text-xs font-bold text-slate-800 mb-1">{notif.sender}</div>
-                <div className="text-xs text-slate-600 leading-relaxed font-medium">{notif.content}</div>
+                <div className="text-[10px] text-slate-400 italic">Môn chính của bạn sẽ tự động cập nhật theo lớp đầu tiên bạn chọn.</div>
               </div>
-            ))}
-          </div>
-          {user.role === UserRole.TCM || user.role === UserRole.TP ? (
-            <button className="w-full mt-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200">
-              Đăng thông báo mới
-            </button>
-          ) : null}
+              <div className="mt-10 flex gap-4">
+                <button onClick={() => setShowProfileModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
+                <button disabled={isSavingProfile} onClick={handleSaveProfile} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase shadow-xl tracking-widest active:scale-95 transition-all">
+                  {isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+           </div>
         </div>
-      </div>
+      )}
+
+      {showNotifModal && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6">
+           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
+              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Đăng thông báo tổ</h3>
+              <div className="space-y-6">
+                <div>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nội dung thông báo</label>
+                   <textarea rows={4} value={newNotif.content} onChange={e => setNewNotif({...newNotif, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10" placeholder="Viết nội dung cho tổ..."></textarea>
+                </div>
+                <div>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Thời gian thực hiện (Nếu có)</label>
+                   <input type="date" value={newNotif.executionTime} onChange={e => setNewNotif({...newNotif, executionTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" />
+                </div>
+                <div className="flex gap-4">
+                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                      <input type="checkbox" checked={newNotif.sendEmailReminder} onChange={e => setNewNotif({...newNotif, sendEmailReminder: e.target.checked})} className="w-5 h-5 rounded-md text-blue-600" />
+                      <span className="text-[10px] font-black text-slate-600 uppercase">Gửi nhắc nhở</span>
+                   </label>
+                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                      <input type="checkbox" checked={newNotif.isImportant} onChange={e => setNewNotif({...newNotif, isImportant: e.target.checked})} className="w-5 h-5 rounded-md text-red-600" />
+                      <span className="text-[10px] font-black text-red-600 uppercase">Quan trọng</span>
+                   </label>
+                </div>
+              </div>
+              <div className="mt-10 flex gap-4">
+                <button onClick={() => setShowNotifModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
+                <button disabled={isPosting} onClick={handlePostNotif} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl shadow-slate-200 active:scale-95 transition-all">
+                  {isPosting ? 'Đang đăng...' : 'Xác nhận đăng'}
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

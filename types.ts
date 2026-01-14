@@ -23,10 +23,36 @@ export interface User {
   subject: string;
   staffPosition?: StaffPosition;
   isApproved: boolean;
-  assignedClasses: string[]; // Lưu dạng ["6/1", "7/2"]
+  assignedClasses: string[];
   gradeLevel?: number[]; 
   isChuNhiem?: boolean;
-  duties: string[]; // Danh sách chức vụ kiêm nhiệm
+  duties: string[];
+}
+
+export interface TeachingDemo {
+  id: string;
+  week: number;
+  date: string;
+  period: number;
+  className: string;
+  teacherId: string;
+  tct: number; // Tiết chương trình
+  lessonName: string;
+  reporterId: string; // Giáo viên viết phiếu
+  note: string;
+  session: 'Morning' | 'Afternoon';
+}
+
+export interface SystemNotification {
+  id: string;
+  senderId: string;
+  senderName: string;
+  role: string;
+  content: string;
+  date: string;
+  executionTime?: string;
+  sendEmailReminder: boolean;
+  isImportant: boolean;
 }
 
 export interface TeacherScoreRow {
@@ -55,9 +81,7 @@ export interface ScheduleItem {
 export interface SubstituteRequest {
   id: string;
   absentTeacherId: string;
-  absentTeacherName?: string;
   substituteTeacherId: string;
-  substituteTeacherName?: string;
   reason: string;
   date: string;
   period: number;
@@ -72,7 +96,6 @@ export enum DocStatus {
   NeedsEdit = 'Cần chỉnh sửa'
 }
 
-// Added DocType to resolve "Module '"./types"' has no exported member 'DocType'"
 export type DocType = string;
 
 export interface Document {
@@ -85,23 +108,4 @@ export interface Document {
   status: DocStatus;
   uploadDate: string;
   fileUrl?: string;
-}
-
-export interface SystemNotification {
-  id: string;
-  role: string;
-  date: string;
-  sender: string;
-  content: string;
-  isImportant?: boolean;
-}
-
-// Added TeachingDemo to resolve "Module '"./types"' has no exported member 'TeachingDemo'"
-export interface TeachingDemo {
-  id: string;
-  teacherId: string;
-  topic: string;
-  date: string;
-  className: string;
-  rating: string;
 }
