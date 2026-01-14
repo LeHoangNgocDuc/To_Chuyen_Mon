@@ -52,9 +52,9 @@ const App: React.FC = () => {
   useEffect(() => { fetchData(); }, []);
 
   const handleApproveUser = async (userToApprove: User) => {
-    // Cập nhật UI ngay lập tức để tạo cảm giác "chạy liền"
-    const updatedUsers = users.map(u => u.id === userToApprove.id ? { ...u, isApproved: true } : u);
-    setUsers(updatedUsers);
+    // Optimistic UI: Cập nhật danh sách ngay lập tức
+    const updatedUser = { ...userToApprove, isApproved: true };
+    setUsers(prev => prev.map(u => u.id === userToApprove.id ? updatedUser : u));
 
     try {
       await fetch(SCRIPT_URL, {
@@ -63,13 +63,13 @@ const App: React.FC = () => {
         body: JSON.stringify({ 
           type: 'users', 
           action: 'save', 
-          data: { ...userToApprove, isApproved: true } 
+          data: updatedUser 
         })
       });
-      // Không cần fetch lại nếu POST thành công (giả định vì no-cors)
+      // Giả định thành công vì no-cors
     } catch (e) {
-      alert('Lỗi khi phê duyệt trên server!');
-      fetchData(); // Reset lại nếu lỗi
+      alert('Lỗi khi lưu phê duyệt! Hệ thống sẽ tải lại dữ liệu.');
+      fetchData();
     }
   };
 
@@ -132,7 +132,7 @@ const App: React.FC = () => {
     } else alert('Sai thông tin đăng nhập!');
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">ĐANG TẢI DỮ LIỆU...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">ĐANG TẢI HỆ THỐNG...</div>;
 
   if (!currentUser) {
     return (

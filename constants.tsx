@@ -5,8 +5,11 @@ export const ADMIN_EMAIL = 'lehoangngocducnt@gmail.com';
 export const ADMIN_PASS = 'Anphuc01';
 export const ADMIN_USERNAME = 'Anphuc';
 
-// URL Script mới nhất (Đã sửa lỗi thiếu chữ 'z')
+// URL Script Google Apps Script để ghi log vào Sheet
 export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8yqrg9CgMJ3eUShUfPWY01JTZrJaQgAuyqiB6_vileLBgw_ZGuFvd8BN/exec';
+
+// ID thư mục đích trên Google Drive: DATATOTOANTIN
+export const DRIVE_FOLDER_ID = '1drU0oZOez7T5G0vxEqyipD4TqVInTfFk';
 
 export const MOCK_USERS: User[] = [];
 export const MOCK_SCHEDULE: ScheduleItem[] = [];
@@ -16,4 +19,4 @@ export const MOCK_DEMOS: TeachingDemo[] = [];
 export const MOCK_DOCS: Document[] = [];
 
 export const ACADEMIC_YEARS = ['2023-2024', '2024-2025', '2025-2026'];
-export const DRIVE_LINK = "https://drive.google.com/drive/folders/1drU0oZOez7T5g0vxEqyipD4TqVlnTfFk?usp=sharing";
+export const DRIVE_LINK = `https://drive.google.com/drive/folders/${DRIVE_FOLDER_ID}?usp=sharing`;

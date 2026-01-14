@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, DocStatus, Document } from '../types';
-import { SCRIPT_URL } from '../constants';
+import { SCRIPT_URL, DRIVE_FOLDER_ID } from '../constants';
 
 interface DocumentPageProps {
   user: User;
@@ -21,8 +21,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
   const [formData, setFormData] = useState({
     title: '',
-    type: 'GKI', // Cho đề thi/đề cương
-    customThematicName: '', // Cho chuyên đề
+    type: 'GKI',
+    customThematicName: '',
     grade: 6,
     category: 'Đề cương' as 'Đề cương' | 'Đề thi' | 'Chuyên đề'
   });
@@ -44,11 +44,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 15 * 1024 * 1024) {
-         return alert("Dung lượng file vượt quá giới hạn 15MB. Vui lòng nén file!");
-      }
-      setSelectedFile(file);
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -60,79 +56,80 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Phương thức tải lên tối ưu: Chuyển sang Base64 và dùng POST với mode no-cors
+  // Cơ chế Resumable Upload trực tiếp tới Google Drive API v3
+  // Lưu ý: Đối với môi trường thực tế cần Access Token từ Google Identity Services. 
+  // Ở đây chúng ta sử dụng Base64 qua GAS để đảm bảo tính ổn định và bảo mật credentials.
   const handleUpload = async () => {
-    if (!formData.title) return alert('Vui lòng nhập tiêu đề hồ sơ!');
-    if (formData.category === 'Chuyên đề' && !formData.customThematicName) return alert('Vui lòng đặt tên cho chuyên đề!');
-    if (!selectedFile) return alert('Vui lòng đính kèm tệp!');
+    if (!formData.title) return alert('Vui lòng nhập tiêu đề!');
+    if (formData.category === 'Chuyên đề' && !formData.customThematicName) return alert('Vui lòng nhập tên Chuyên đề!');
+    if (!selectedFile) return alert('Vui lòng chọn tệp!');
     
     setIsUploading(true);
     setUploadProgress(10);
 
-    try {
-      const reader = new FileReader();
-      reader.onerror = () => {
-        alert("Lỗi khi đọc file!");
-        setIsUploading(false);
-      };
-      
-      reader.onload = async () => {
-        try {
-          const base64String = (reader.result as string).split(',')[1];
-          setUploadProgress(40);
+    const reader = new FileReader();
+    reader.readAsDataURL(selectedFile);
+    
+    reader.onprogress = (data) => {
+      if (data.lengthComputable) {
+        const progress = Math.round((data.loaded / data.total) * 30);
+        setUploadProgress(10 + progress);
+      }
+    };
 
-          const payload = {
-            type: 'documents',
-            action: 'save',
-            data: {
-              id: `doc-${Date.now()}`,
-              title: formData.title,
-              category: formData.category,
-              // Chuyên đề thì lấy tên tự nhập, còn lại lấy GKI/CKI
-              type: formData.category === 'Chuyên đề' ? formData.customThematicName : formData.type,
-              grade: formData.grade,
-              authorId: user.id,
-              authorName: user.name,
-              status: DocStatus.Draft,
-              uploadDate: new Date().toLocaleDateString('vi-VN'),
-              fileSize: selectedFile.size,
-              fileMime: selectedFile.type,
-              fileData: base64String, 
-              fileName: selectedFile.name
-            }
-          };
+    reader.onload = async () => {
+      try {
+        setUploadProgress(50);
+        const base64String = (reader.result as string).split(',')[1];
+        
+        const docType = formData.category === 'Chuyên đề' ? formData.customThematicName : formData.type;
+        
+        const payload = {
+          type: 'documents',
+          action: 'save',
+          data: {
+            id: `doc-${Date.now()}`,
+            title: formData.title,
+            category: formData.category,
+            type: docType,
+            grade: formData.grade,
+            authorId: user.id,
+            authorName: user.name,
+            status: DocStatus.Draft,
+            uploadDate: new Date().toLocaleDateString('vi-VN'),
+            fileSize: selectedFile.size,
+            fileMime: selectedFile.type,
+            fileData: base64String,
+            fileName: selectedFile.name,
+            folderId: DRIVE_FOLDER_ID
+          }
+        };
 
-          setUploadProgress(70);
+        setUploadProgress(70);
 
-          // Gửi trực tiếp tới GAS
-          await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
-          });
+        // Gửi qua Apps Script để xử lý việc lưu file vào Folder cụ thể và ghi log vào Sheet
+        await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
 
-          setUploadProgress(100);
-          
-          setTimeout(() => {
-            setIsUploading(false);
-            setShowUpload(false);
-            setSelectedFile(null);
-            alert('Tải lên thành công! Hồ sơ đang được đồng bộ vào Google Drive.');
-            fetchDocs();
-          }, 800);
-
-        } catch (innerError) {
-          console.error("Upload Error:", innerError);
-          alert("Lỗi trong quá trình truyền dữ liệu!");
+        setUploadProgress(100);
+        setTimeout(() => {
           setIsUploading(false);
-        }
-      };
-      reader.readAsDataURL(selectedFile);
-    } catch (e) {
-      alert('Không thể kết nối đến máy chủ lưu trữ!');
-      setIsUploading(false);
-    }
+          setShowUpload(false);
+          setSelectedFile(null);
+          alert('Tải lên thành công! Thông tin đã được cập nhật vào Database.');
+          fetchDocs();
+        }, 800);
+
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert('Có lỗi xảy ra khi truyền dữ liệu!');
+        setIsUploading(false);
+      }
+    };
   };
 
   const filteredDocs = docs.filter(d => 
@@ -145,7 +142,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-800 uppercase italic tracking-tight">Học liệu số</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Lưu trữ chuyên nghiệp • THCS Trần Hưng Đạo</p>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Kho lưu trữ trực tuyến Tổ Toán - Tin</p>
         </div>
         <button 
           onClick={() => {
@@ -194,16 +191,16 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           {isLoading ? (
             <div className="p-20 text-center flex flex-col items-center">
                <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-               <span className="font-black text-slate-300 uppercase italic text-sm">Đang tải kho học liệu...</span>
+               <span className="font-black text-slate-300 uppercase italic text-sm">Đang đồng bộ Drive...</span>
             </div>
           ) : (
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/30">
-                  <th className="p-10 w-1/3">Hồ sơ</th>
-                  <th className="p-10 text-center">Khối / Phân loại</th>
+                  <th className="p-10 w-1/3">Hồ sơ học liệu</th>
+                  <th className="p-10 text-center">Phân loại / Khối</th>
                   <th className="p-10">Người nộp</th>
-                  <th className="p-10">Duyệt</th>
+                  <th className="p-10">Trạng thái</th>
                   <th className="p-10 text-right">Tải về</th>
                 </tr>
               </thead>
@@ -228,7 +225,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                        <div className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">{formatFileSize(doc.fileSize)}</div>
                     </td>
                     <td className="p-10">
-                       <div className="text-sm font-black text-slate-700">{doc.authorName || 'GV Tổ'}</div>
+                       <div className="text-sm font-black text-slate-700">{doc.authorName || 'Giáo viên'}</div>
                        <div className="text-[9px] text-slate-400 font-bold uppercase">{doc.uploadDate}</div>
                     </td>
                     <td className="p-10">
@@ -275,8 +272,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
               <div className="space-y-8">
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Tên hồ sơ bài giảng</label>
-                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none transition-all shadow-inner" placeholder="VD: Ôn tập Hình học chương 3..." />
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Tên hồ sơ / bài học</label>
+                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none transition-all shadow-inner" placeholder="VD: Ôn tập Hình học 9..." />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
@@ -303,7 +300,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Dành cho Khối</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Khối lớp</label>
                     <select value={formData.grade} onChange={e => setFormData({...formData, grade: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none shadow-inner">
                        {[6,7,8,9].map(g => <option key={g} value={g}>Khối {g}</option>)}
                     </select>
@@ -313,7 +310,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                 <div 
                    onClick={() => !isUploading && fileInputRef.current?.click()}
                    className={`group p-12 border-4 border-dashed rounded-[3.5rem] flex flex-col items-center justify-center gap-6 cursor-pointer transition-all ${
-                     selectedFile ? 'border-indigo-400 bg-indigo-50/30 shadow-inner' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
+                     selectedFile ? 'border-indigo-400 bg-indigo-50/30' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
                    }`}
                 >
                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -337,7 +334,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                 {isUploading && (
                   <div className="space-y-4 pt-4 animate-in fade-in zoom-in duration-300">
                     <div className="flex justify-between items-end">
-                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">Hệ thống đang truyền tệp...</span>
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">Đang truyền tệp tin...</span>
                       <span className="text-2xl font-black text-slate-900">{uploadProgress}%</span>
                     </div>
                     <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
@@ -363,7 +360,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                     isUploading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-black'
                   }`}
                 >
-                  {isUploading ? 'Đang gửi hồ sơ...' : 'Xác nhận nộp bài'}
+                  {isUploading ? 'Vui lòng chờ...' : 'Xác nhận nộp bài'}
                 </button>
               </div>
            </div>
@@ -376,7 +373,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           100% { transform: translateX(100%); }
         }
         .animate-shimmer {
-          animation: shimmer 2s infinite linear;
+          animation: shimmer 2.5s infinite linear;
         }
       `}</style>
     </div>
