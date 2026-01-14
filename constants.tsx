@@ -12,14 +12,21 @@ export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8y
 export const DRIVE_FOLDER_ID = '1drU0oZOez7T5G0vxEqyipD4TqVInTfFk';
 
 /**
- * HƯỚNG DẪN KHẮC PHỤC LỖI 401:
+ * HƯỚNG DẪN KHẮC PHỤC LỖI 401 (invalid_client):
  * 1. Truy cập https://console.cloud.google.com/
  * 2. Chọn dự án -> APIs & Services -> Credentials.
  * 3. Tạo "OAuth 2.0 Client ID" loại "Web application".
- * 4. Thêm "https://to-chuyen-mon.vercel.app" (hoặc domain của bạn) vào mục "Authorized JavaScript origins".
- * 5. Copy Client ID và dán vào bên dưới.
+ * 4. Ở mục "Authorized JavaScript origins", thêm: https://to-chuyen-mon.vercel.app
+ * 5. Copy Client ID và dán vào biến bên dưới hoặc nhập vào phần "Cấu hình" trong app (dành cho Admin).
  */
-export const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID_DEFAULT = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
+// Hàm lấy Client ID (ưu tiên từ localStorage nếu Admin đã cấu hình tay)
+export const getGoogleClientId = () => {
+  const saved = localStorage.getItem('THD_GOOGLE_CLIENT_ID');
+  if (saved && saved !== 'undefined') return saved;
+  return GOOGLE_CLIENT_ID_DEFAULT;
+};
 
 export const MOCK_USERS: User[] = [];
 export const MOCK_SCHEDULE: ScheduleItem[] = [];
