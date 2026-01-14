@@ -30,6 +30,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
 
   const [editData, setEditData] = useState({
     tempSubject: user.subject || 'Toán',
+    tempGrade: 6,
+    tempClass: 1,
     assignedClasses: [...(user.assignedClasses || [])]
   });
 
@@ -61,13 +63,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     }
   };
 
-  const toggleClass = (grade: number, cls: number) => {
-    const entry = `${editData.tempSubject} ${grade}/${cls}`;
-    if (editData.assignedClasses.includes(entry)) {
-      setEditData({ ...editData, assignedClasses: editData.assignedClasses.filter(c => c !== entry) });
-    } else {
+  const addAssignment = () => {
+    const entry = `${editData.tempSubject} ${editData.tempGrade}/${editData.tempClass}`;
+    if (!editData.assignedClasses.includes(entry)) {
       setEditData({ ...editData, assignedClasses: [...editData.assignedClasses, entry] });
     }
+  };
+
+  const removeAssignment = (item: string) => {
+    setEditData({ ...editData, assignedClasses: editData.assignedClasses.filter(c => c !== item) });
   };
 
   const handleSaveProfile = async () => {
@@ -77,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     const updatedUser = { 
       ...user, 
       assignedClasses: editData.assignedClasses,
-      subject: editData.tempSubject // Cập nhật môn dạy chính theo lựa chọn hiện tại
+      subject: editData.assignedClasses[0]?.split(' ')[0] || user.subject
     };
 
     try {
@@ -111,7 +115,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
             </div>
           </div>
           <button onClick={() => {
-            setEditData({ tempSubject: user.subject, assignedClasses: [...(user.assignedClasses || [])] });
+            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])] });
             setShowProfileModal(true);
           }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95">
             Sửa phân công dạy
@@ -123,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
         <div className="lg:col-span-2 space-y-8">
            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl p-10">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-slate-800 uppercase italic">Thông báo Tổ</h3>
+              <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">Thông báo Tổ</h3>
               {(user.role === UserRole.TCM || user.role === UserRole.TP) && (
                 <button onClick={() => setShowNotifModal(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">Đăng tin mới</button>
               )}
@@ -141,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                     </div>
                     {notif.isImportant && <span className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-[8px] font-black uppercase">Quan trọng</span>}
                   </div>
-                  <p className="text-slate-600 font-bold leading-relaxed mb-4">{notif.content}</p>
+                  <p className="text-slate-600 font-bold leading-relaxed mb-4 italic">{notif.content}</p>
                   {notif.executionTime && (
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200">
                       <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -161,11 +165,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
              <h3 className="text-lg font-black text-slate-800 uppercase italic mb-6">Trạng thái</h3>
              <div className="space-y-4">
                 <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100">
-                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Điểm thi đua</div>
+                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Điểm thi đua</div>
                   <div className="text-4xl font-black text-blue-600 tracking-tighter">189.4</div>
                 </div>
                 <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                  <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Xếp hạng tổ</div>
+                  <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1 italic">Xếp hạng tổ</div>
                   <div className="text-4xl font-black text-emerald-600 tracking-tighter">#2</div>
                 </div>
              </div>
@@ -175,60 +179,39 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
 
       {showProfileModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
-           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
-              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Cập nhật phân công chuyên môn</h3>
+           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
+              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Sửa phân công dạy</h3>
               <div className="space-y-6">
-                <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-black text-blue-800 uppercase tracking-widest">Môn giảng dạy</label>
-                    <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs font-black text-blue-600 outline-none shadow-sm">
+                <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-4">
+                  <div className="text-[11px] font-black text-blue-800 uppercase italic tracking-widest">Thêm phân công mới</div>
+                  <div className="space-y-2">
+                    <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-blue-600 outline-none shadow-sm">
                       {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                    <div className="flex gap-2">
+                      <select value={editData.tempGrade} onChange={e => setEditData({...editData, tempGrade: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black outline-none shadow-sm">
+                        {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
+                      </select>
+                      <select value={editData.tempClass} onChange={e => setEditData({...editData, tempClass: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black outline-none shadow-sm">
+                        {CLASSES.map(c => <option key={c} value={c}>Lớp {c}</option>)}
+                      </select>
+                      <button type="button" onClick={addAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg shadow-blue-500/30 active:scale-90">+</button>
+                    </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    {GRADES.map(grade => (
-                      <div key={grade} className="space-y-2">
-                        <div className="text-[10px] font-black text-slate-400 uppercase">Khối {grade}</div>
-                        <div className="grid grid-cols-6 gap-2">
-                          {CLASSES.map(cls => {
-                            const entry = `${editData.tempSubject} ${grade}/${cls}`;
-                            const isActive = editData.assignedClasses.includes(entry);
-                            return (
-                              <button 
-                                key={cls} 
-                                type="button" 
-                                onClick={() => toggleClass(grade, cls)}
-                                className={`py-3 rounded-xl text-[10px] font-black transition-all border ${
-                                  isActive 
-                                  ? 'bg-blue-600 text-white border-blue-700 shadow-md' 
-                                  : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
-                                }`}
-                              >
-                                {grade}/{cls}
-                              </button>
-                            );
-                          })}
+                  <div className="pt-4 border-t border-blue-100">
+                    <div className="text-[9px] font-black text-blue-400 uppercase mb-2">Phân công hiện tại ({editData.assignedClasses.length}):</div>
+                    <div className="flex flex-wrap gap-2">
+                      {editData.assignedClasses.map(item => (
+                        <div key={item} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-xl text-[9px] font-black text-blue-600 shadow-sm">
+                          {item}
+                          <button type="button" onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {editData.assignedClasses.length > 0 && (
-                    <div className="pt-4 border-t border-blue-100">
-                      <div className="text-[9px] font-black text-blue-400 uppercase mb-2">Toàn bộ phân công ({editData.assignedClasses.length} lớp):</div>
-                      <div className="flex flex-wrap gap-2">
-                        {editData.assignedClasses.map(item => (
-                          <div key={item} className="flex items-center gap-2 px-2 py-1 bg-white border border-blue-200 rounded-lg text-[8px] font-black text-blue-600">
-                            {item}
-                            <button onClick={(e) => { e.stopPropagation(); setEditData({...editData, assignedClasses: editData.assignedClasses.filter(i => i !== item)}); }} className="text-red-400 hover:text-red-600">×</button>
-                          </div>
-                        ))}
-                      </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-400 italic text-center">Gợi ý: Chọn môn rồi chọn lớp trên lưới để thêm nhanh phân công mới.</div>
+                <div className="text-[10px] text-slate-400 italic text-center">Gợi ý: Thêm môn/khối/lớp rồi nhấn dấu (+) để cập nhật nhanh.</div>
               </div>
               <div className="mt-10 flex gap-4">
                 <button onClick={() => setShowProfileModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
@@ -247,18 +230,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
               <div className="space-y-6">
                 <div>
                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nội dung thông báo</label>
-                   <textarea rows={4} value={newNotif.content} onChange={e => setNewNotif({...newNotif, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10" placeholder="Viết nội dung cho tổ..."></textarea>
+                   <textarea rows={4} value={newNotif.content} onChange={e => setNewNotif({...newNotif, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 shadow-inner" placeholder="Viết nội dung cho tổ..."></textarea>
                 </div>
                 <div>
                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Thời gian thực hiện (Nếu có)</label>
-                   <input type="date" value={newNotif.executionTime} onChange={e => setNewNotif({...newNotif, executionTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" />
+                   <input type="date" value={newNotif.executionTime} onChange={e => setNewNotif({...newNotif, executionTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold shadow-inner" />
                 </div>
                 <div className="flex gap-4">
-                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer shadow-inner">
                       <input type="checkbox" checked={newNotif.sendEmailReminder} onChange={e => setNewNotif({...newNotif, sendEmailReminder: e.target.checked})} className="w-5 h-5 rounded-md text-blue-600" />
                       <span className="text-[10px] font-black text-slate-600 uppercase">Gửi nhắc nhở</span>
                    </label>
-                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                   <label className="flex-1 flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer shadow-inner">
                       <input type="checkbox" checked={newNotif.isImportant} onChange={e => setNewNotif({...newNotif, isImportant: e.target.checked})} className="w-5 h-5 rounded-md text-red-600" />
                       <span className="text-[10px] font-black text-red-600 uppercase">Quan trọng</span>
                    </label>
@@ -266,7 +249,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
               </div>
               <div className="mt-10 flex gap-4">
                 <button onClick={() => setShowNotifModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
-                <button disabled={isPosting} onClick={handlePostNotif} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl shadow-slate-200 active:scale-95 transition-all">
+                <button disabled={isPosting} onClick={handlePostNotif} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all">
                   {isPosting ? 'Đang đăng...' : 'Xác nhận đăng'}
                 </button>
               </div>
