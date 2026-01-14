@@ -11,6 +11,10 @@ export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8y
 // ID thư mục đích trên Google Drive: DATATOTOANTIN
 export const DRIVE_FOLDER_ID = '1drU0oZOez7T5G0vxEqyipD4TqVInTfFk';
 
+// Client ID lấy từ Google Cloud Console (APIs & Services > Credentials)
+// Lưu ý: Người dùng cần điền Client ID thật của họ ở đây để tính năng Direct-Upload hoạt động
+export const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
 export const MOCK_USERS: User[] = [];
 export const MOCK_SCHEDULE: ScheduleItem[] = [];
 export const MOCK_SUBSTITUTES: SubstituteRequest[] = [];
