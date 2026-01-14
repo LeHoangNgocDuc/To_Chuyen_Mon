@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { User, UserRole, SystemNotification } from '../types';
+import { SCRIPT_URL } from '../constants';
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
 const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
 
 interface DashboardProps {
@@ -26,7 +26,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     isImportant: false
   });
 
-  // Profile Edit State
   const [editData, setEditData] = useState({
     tempSubject: 'Toán',
     tempGrade: '6',
@@ -77,7 +76,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     if (editData.assignedClasses.length === 0) return alert('Vui lòng có ít nhất một lớp phân công!');
     
     setIsSavingProfile(true);
-    // Tự động nhận môn chính dựa trên lớp đầu tiên được thêm vào
     const primarySubject = editData.assignedClasses[0].split(' ')[0];
     
     const updatedUser = { 
@@ -154,7 +152,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                       <span className="text-[10px] font-black text-slate-500 uppercase">Hạn thực hiện: <span className="text-orange-600">{notif.executionTime}</span></span>
                     </div>
                   )}
-                  {notif.sendEmailReminder && <div className="mt-2 text-[9px] font-black text-blue-400 uppercase tracking-tighter italic">Dấu hiệu: Đã gửi nhắc nhở qua Email/Tin nhắn</div>}
                 </div>
               )) : (
                 <div className="py-20 text-center font-black text-slate-300 italic uppercase">Chưa có thông báo mới</div>
@@ -180,7 +177,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
         </div>
       </div>
 
-      {/* Modal Sửa Phân Công */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6">
            <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">

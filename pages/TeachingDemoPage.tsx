@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, TeachingDemo } from '../types';
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
+import { SCRIPT_URL } from '../constants';
 
 interface TeachingDemoPageProps {
   user: User;

@@ -1,9 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, UserRole, TeacherScoreRow } from '../types';
-import { MOCK_USERS, MOCK_SUBSTITUTES } from '../constants';
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
+import { SCRIPT_URL } from '../constants';
 
 interface CompetitionPageProps {
   user: User;
@@ -18,15 +16,23 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(user.id);
   const [isSyncing, setIsSyncing] = useState(false);
   const [scores, setScores] = useState<Record<string, TeacherScoreRow>>({});
+  const [users, setUsers] = useState<User[]>([]);
 
-  const fetchScores = async () => {
+  const fetchData = async () => {
     setIsSyncing(true);
     try {
-      const response = await fetch(`${SCRIPT_URL}?type=scores`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
+      const [uRes, sRes] = await Promise.all([
+        fetch(`${SCRIPT_URL}?type=users`),
+        fetch(`${SCRIPT_URL}?type=scores`)
+      ]);
+      const uData = await uRes.json();
+      const sData = await sRes.json();
+      
+      if (Array.isArray(uData)) setUsers(uData);
+      
+      if (Array.isArray(sData)) {
         const newScores: Record<string, TeacherScoreRow> = {};
-        data.forEach((item: any) => {
+        sData.forEach((item: any) => {
           if (item.teacherId) {
             newScores[item.teacherId] = {
               ...item,
@@ -49,14 +55,14 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
   };
 
   useEffect(() => {
-    fetchScores();
+    fetchData();
   }, []);
 
   const saveScoreToSheet = async (teacherId: string) => {
     setIsSyncing(true);
     const scoreData = {
       ...scores[teacherId],
-      teacherName: MOCK_USERS.find(u => u.id === teacherId)?.name || user.name
+      teacherName: users.find(u => u.id === teacherId)?.name || user.name
     };
     try {
       await fetch(SCRIPT_URL, {
@@ -66,7 +72,7 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
       });
       alert('Đã đồng bộ điểm lên Google Sheet!');
       setShowEntryModal(false);
-      fetchScores();
+      fetchData();
     } catch (error) {
       alert('Có lỗi xảy ra khi lưu dữ liệu!');
     } finally {
@@ -74,10 +80,8 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
     }
   };
 
-  const isManagement = user.role === UserRole.TCM || user.role === UserRole.TP;
-
   const fullTableData = useMemo(() => {
-    return MOCK_USERS
+    return users
       .filter(u => u.role !== UserRole.BGH)
       .map(u => {
         const s = scores[u.id] || { 
@@ -95,7 +99,7 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
         return { ...u, ...s, totalA, totalHSSS, totalNgayCong, totalCTCM, grandTotal };
       })
       .sort((a, b) => b.grandTotal - a.grandTotal);
-  }, [scores, MOCK_USERS]);
+  }, [scores, users]);
 
   const handleScoreUpdate = (teacherId: string, field: keyof TeacherScoreRow, value: number) => {
     setScores(prev => ({

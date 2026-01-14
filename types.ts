@@ -36,9 +36,9 @@ export interface TeachingDemo {
   period: number;
   className: string;
   teacherId: string;
-  tct: number; // Tiết chương trình
+  tct: number;
   lessonName: string;
-  reporterId: string; // Giáo viên viết phiếu
+  reporterId: string;
   note: string;
   session: 'Morning' | 'Afternoon';
 }
@@ -105,7 +105,10 @@ export interface Document {
   type: DocType;
   grade: number;
   authorId: string;
+  authorName?: string;
   status: DocStatus;
   uploadDate: string;
   fileUrl?: string;
+  fileSize?: number;
+  fileMime?: string;
 }

@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, DocStatus, Document } from '../types';
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
+import { SCRIPT_URL } from '../constants';
 
 interface DocumentPageProps {
   user: User;
@@ -13,8 +12,12 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   const [filterType, setFilterType] = useState<string>('Tất cả');
   const [docs, setDocs] = useState<Document[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -38,31 +41,71 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
   useEffect(() => { fetchDocs(); }, []);
 
-  const handleUpload = async () => {
-    if (!formData.title) return alert('Vui lòng nhập tiêu đề tài liệu!');
-    setIsUploading(true);
-    const newDoc: Document = {
-      ...formData,
-      id: `doc-${Date.now()}`,
-      authorId: user.id,
-      status: DocStatus.Draft,
-      uploadDate: new Date().toLocaleDateString('vi-VN')
-    };
-
-    try {
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: JSON.stringify({ type: 'documents', action: 'save', data: newDoc })
-      });
-      alert('Đã tải tài liệu lên hệ thống! Chờ phê duyệt.');
-      setShowUpload(false);
-      fetchDocs();
-    } catch (e) {
-      alert('Lỗi tải lên!');
-    } finally {
-      setIsUploading(false);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '0 KB';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleUpload = () => {
+    if (!formData.title) return alert('Vui lòng nhập tiêu đề tài liệu!');
+    if (!selectedFile) return alert('Vui lòng đính kèm tệp tài liệu!');
+    
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const xhr = new XMLHttpRequest();
+    const uploadData = new FormData();
+    
+    // Đóng gói dữ liệu binary
+    uploadData.append('file', selectedFile);
+    uploadData.append('type', 'documents');
+    uploadData.append('action', 'save');
+    uploadData.append('metadata', JSON.stringify({
+      id: `doc-${Date.now()}`,
+      title: formData.title,
+      category: formData.category,
+      type: formData.type,
+      grade: formData.grade,
+      authorId: user.id,
+      authorName: user.name,
+      status: DocStatus.Draft,
+      uploadDate: new Date().toLocaleDateString('vi-VN'),
+      fileSize: selectedFile.size,
+      fileMime: selectedFile.type
+    }));
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setUploadProgress(percent);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      // Vì fetch POST tới GAS có thể bị CORS chặn response nhưng vẫn thành công
+      setIsUploading(false);
+      setShowUpload(false);
+      setSelectedFile(null);
+      alert('Đã gửi yêu cầu tải lên Drive! Vui lòng làm mới danh sách sau vài giây.');
+      fetchDocs();
+    });
+
+    xhr.addEventListener('error', () => {
+      alert('Lỗi kết nối khi tải file!');
+      setIsUploading(false);
+    });
+
+    xhr.open('POST', SCRIPT_URL);
+    xhr.send(uploadData);
   };
 
   const filteredDocs = docs.filter(d => 
@@ -71,65 +114,71 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 uppercase italic">Hồ sơ Chuyên môn</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Quản lý Đề cương ôn tập và Đề kiểm tra định kỳ</p>
+          <h1 className="text-3xl font-black text-slate-800 uppercase italic">Kho Học Liệu Số</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Đồng bộ trực tiếp Google Drive • Hệ thống Trần Hưng Đạo</p>
         </div>
         <button 
           onClick={() => {
             setFormData({ ...formData, category: activeCategory });
             setShowUpload(true);
           }}
-          className="bg-blue-600 text-white px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 flex items-center gap-2 active:scale-95"
+          className="bg-slate-900 text-white px-10 py-5 rounded-[2.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-2xl flex items-center gap-4 active:scale-95"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-          Tải lên {activeCategory}
+          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+          </div>
+          Đăng tải {activeCategory}
         </button>
       </div>
 
-      <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center w-fit">
+      <div className="bg-white p-2 rounded-[2.8rem] border border-slate-100 shadow-sm flex items-center w-fit">
         <button 
           onClick={() => setActiveCategory('Đề cương')}
-          className={`px-10 py-4 rounded-[1.8rem] text-[11px] font-black uppercase tracking-widest transition-all ${activeCategory === 'Đề cương' ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-12 py-4 rounded-[2.2rem] text-[11px] font-black uppercase tracking-widest transition-all ${activeCategory === 'Đề cương' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:text-slate-600'}`}
         >
-          Đề cương
+          Đề cương ôn tập
         </button>
         <button 
           onClick={() => setActiveCategory('Đề thi')}
-          className={`px-10 py-4 rounded-[1.8rem] text-[11px] font-black uppercase tracking-widest transition-all ${activeCategory === 'Đề thi' ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+          className={`px-12 py-4 rounded-[2.2rem] text-[11px] font-black uppercase tracking-widest transition-all ${activeCategory === 'Đề thi' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:text-slate-600'}`}
         >
           Đề thi & Ma trận
         </button>
       </div>
 
-      <div className="bg-white rounded-[3.5rem] border border-slate-200 shadow-2xl overflow-hidden min-h-[400px]">
-        <div className="p-8 bg-slate-50/50 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex gap-2">
-            {['Tất cả', 'GKI', 'CKI', 'GKII', 'CKII'].map(type => (
-              <button 
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black transition-all uppercase ${
-                  filterType === type ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400 hover:border-blue-300'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
+      <div className="bg-white rounded-[4rem] border border-slate-200 shadow-2xl overflow-hidden min-h-[500px]">
+        <div className="p-8 bg-slate-50/50 border-b border-slate-100 flex flex-wrap gap-3 items-center">
+          {['Tất cả', 'GKI', 'CKI', 'GKII', 'CKII'].map(type => (
+            <button 
+              key={type}
+              onClick={() => setFilterType(type)}
+              className={`px-8 py-3 rounded-2xl text-[10px] font-black transition-all uppercase tracking-tighter ${
+                filterType === type ? 'bg-slate-900 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400 hover:border-slate-300'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
         </div>
 
         <div className="overflow-x-auto">
-          {isLoading ? <div className="p-20 text-center font-black text-slate-300 animate-pulse uppercase italic">Đang đồng bộ hồ sơ...</div> : (
+          {isLoading ? (
+            <div className="p-20 text-center flex flex-col items-center">
+               <div className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+               <span className="font-black text-slate-300 uppercase italic text-sm">Đang quét dữ liệu Drive...</span>
+            </div>
+          ) : (
             <table className="w-full text-left">
               <thead>
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/30">
-                  <th className="p-10">Tên tài liệu / Thông tin</th>
-                  <th className="p-10">Khối lớp / Môn</th>
-                  <th className="p-10">Kiểm duyệt</th>
-                  <th className="p-10 text-right">Tải về</th>
+                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/30">
+                  <th className="p-10 w-1/3">Tài liệu</th>
+                  <th className="p-10 text-center">Kích thước</th>
+                  <th className="p-10">Tác giả</th>
+                  <th className="p-10">Duyệt</th>
+                  <th className="p-10 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -137,37 +186,45 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                   <tr key={doc.id} className="group hover:bg-slate-50 transition-colors">
                     <td className="p-10">
                       <div className="flex items-center gap-6">
-                        <div className={`w-14 h-14 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl ${
-                          doc.status === DocStatus.Approved ? 'bg-emerald-500 shadow-emerald-500/20' :
-                          doc.status === DocStatus.NeedsEdit ? 'bg-red-500 shadow-red-500/20' : 'bg-blue-500 shadow-blue-500/20'
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transform group-hover:rotate-6 transition-transform ${
+                          doc.category === 'Đề thi' ? 'bg-rose-500' : 'bg-indigo-500'
                         }`}>
-                          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                         </div>
                         <div>
-                          <div className="font-black text-slate-800 text-base">{doc.title}</div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase mt-1">{doc.type} <span className="mx-1">•</span> Ngày nộp: {doc.uploadDate}</div>
+                          <div className="font-black text-slate-800 text-base group-hover:text-blue-600 transition-colors">{doc.title}</div>
+                          <div className="text-[10px] text-slate-400 font-black uppercase mt-1 tracking-widest">{doc.type} • KHỐI {doc.grade}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="p-10">
-                       <span className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase shadow-lg">Khối {doc.grade}</span>
+                    <td className="p-10 text-center">
+                       <span className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black">{formatFileSize(doc.fileSize)}</span>
                     </td>
                     <td className="p-10">
-                      <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border-2 ${
-                        doc.status === DocStatus.Approved ? 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm' :
-                        doc.status === DocStatus.Draft ? 'bg-blue-50 text-blue-700 border-blue-100 shadow-sm' : 'bg-red-50 text-red-700 border-red-100 shadow-sm'
+                       <div className="text-sm font-black text-slate-700">{doc.authorName || 'GV Tổ'}</div>
+                       <div className="text-[9px] text-slate-400 font-bold uppercase">{doc.uploadDate}</div>
+                    </td>
+                    <td className="p-10">
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full w-fit ${
+                        doc.status === DocStatus.Approved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                       }`}>
-                        {doc.status}
-                      </span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${doc.status === DocStatus.Approved ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
+                        <span className="text-[9px] font-black uppercase">{doc.status}</span>
+                      </div>
                     </td>
                     <td className="p-10 text-right">
-                       <button className="p-4 bg-slate-100 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                      </button>
+                       <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center w-12 h-12 bg-white border border-slate-200 text-slate-800 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                       </a>
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={4} className="p-20 text-center font-black text-slate-300 italic uppercase">Chưa có tài liệu nào trong thư mục này</td></tr>
+                  <tr><td colSpan={5} className="p-32 text-center">
+                    <div className="flex flex-col items-center opacity-20">
+                       <svg className="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                       <span className="font-black text-2xl uppercase italic">Thư mục trống</span>
+                    </div>
+                  </td></tr>
                 )}
               </tbody>
             </table>
@@ -176,47 +233,108 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       </div>
 
       {showUpload && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-3xl flex items-center justify-center z-50 p-6">
-           <div className="bg-white rounded-[4rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
-              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Tải lên {formData.category}</h3>
-              <div className="space-y-6">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
+           <div className="bg-white rounded-[4.5rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-2xl font-black text-slate-800 uppercase italic">Cổng đẩy dữ liệu Drive</h3>
+                <button onClick={() => !isUploading && setShowUpload(false)} className="text-slate-300 hover:text-slate-900 transition-colors">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <div className="space-y-8">
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Tiêu đề tài liệu</label>
-                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" placeholder="VD: Đề cương ôn tập Toán 9 Học kỳ I" />
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">Tiêu đề tài liệu</label>
+                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-blue-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none transition-all" placeholder="VD: Đề cương Toán 9 HK I" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Kỳ thi / Giai đoạn</label>
-                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
-                       <option value="GKI">Giữa học kỳ I</option>
-                       <option value="CKI">Cuối học kỳ I</option>
-                       <option value="GKII">Giữa học kỳ II</option>
-                       <option value="CKII">Cuối học kỳ II</option>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">Kỳ thi</label>
+                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none">
+                       <option value="GKI">Giữa HK I</option>
+                       <option value="CKI">Cuối HK I</option>
+                       <option value="GKII">Giữa HK II</option>
+                       <option value="CKII">Cuối HK II</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Khối lớp</label>
-                    <select value={formData.grade} onChange={e => setFormData({...formData, grade: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">Khối lớp</label>
+                    <select value={formData.grade} onChange={e => setFormData({...formData, grade: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none">
                        {[6,7,8,9].map(g => <option key={g} value={g}>Khối {g}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="p-10 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 group cursor-pointer hover:border-blue-400 transition-all">
-                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-blue-500 shadow-sm transition-all">
-                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                
+                <div 
+                   onClick={() => !isUploading && fileInputRef.current?.click()}
+                   className={`group p-12 border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center gap-6 cursor-pointer transition-all ${
+                     selectedFile ? 'border-blue-400 bg-blue-50/30' : 'border-slate-100 bg-slate-50 hover:border-blue-200'
+                   }`}
+                >
+                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                   <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-xl transform group-hover:scale-110 transition-transform ${selectedFile ? 'bg-blue-600 text-white' : 'bg-white text-slate-300'}`}>
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
                    </div>
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nhấn để chọn tệp tài liệu</span>
+                   <div className="text-center">
+                     <span className="block text-[11px] font-black text-slate-800 uppercase tracking-widest">
+                       {selectedFile ? selectedFile.name : 'Chọn tệp từ máy tính'}
+                     </span>
+                     {selectedFile && (
+                       <span className="text-[10px] font-black text-blue-500 uppercase tracking-tighter mt-1 block">
+                         Kích thước: {formatFileSize(selectedFile.size)}
+                       </span>
+                     )}
+                   </div>
                 </div>
+
+                {isUploading && (
+                  <div className="space-y-4 pt-4">
+                    <div className="flex justify-between items-end">
+                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest italic animate-pulse">Đang truyền dữ liệu...</span>
+                      <span className="text-2xl font-black text-slate-900">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-1">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-300 relative shadow-lg"
+                        style={{ width: `${uploadProgress}%` }}
+                      >
+                         <div className="absolute inset-0 bg-white/20 animate-shimmer"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="mt-12 flex gap-4">
-                <button onClick={() => setShowUpload(false)} className="flex-1 text-[11px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
-                <button disabled={isUploading} onClick={handleUpload} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all">
-                  {isUploading ? 'Đang gửi...' : 'Xác nhận tải lên'}
+
+              <div className="mt-14 flex gap-6">
+                {!isUploading && (
+                  <button onClick={() => setShowUpload(false)} className="flex-1 font-black text-slate-400 uppercase tracking-widest text-[11px] hover:text-slate-900 transition-colors">Hủy bỏ</button>
+                )}
+                <button 
+                  disabled={isUploading} 
+                  onClick={handleUpload} 
+                  className={`flex-1 py-6 rounded-[2.5rem] font-black uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${
+                    isUploading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-black active:scale-95'
+                  }`}
+                >
+                  {isUploading ? 'Vui lòng chờ...' : 'Bắt đầu tải lên'}
                 </button>
               </div>
            </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite linear;
+        }
+      `}</style>
     </div>
   );
 };

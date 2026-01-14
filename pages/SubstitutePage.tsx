@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SubstituteRequest } from '../types';
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
+import { SCRIPT_URL } from '../constants';
 
 interface SubstitutePageProps {
   user: User;
@@ -41,7 +40,8 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
         fetch(`${SCRIPT_URL}?type=substitutes`),
         fetch(`${SCRIPT_URL}?type=users`)
       ]);
-      const [subs, usrs] = await Promise.all([subRes.json(), userRes.json()]);
+      const subs = await subRes.json();
+      const usrs = await userRes.json();
       if (Array.isArray(subs)) setSubstitutes(subs);
       if (Array.isArray(usrs)) setUsers(usrs);
     } catch (e) {

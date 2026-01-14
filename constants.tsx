@@ -1,11 +1,13 @@
 
-import { User, UserRole, ScheduleItem, DocType, DocStatus, Document, SubstituteRequest, SystemNotification, TeachingDemo, StaffPosition } from './types';
+import { User, UserRole, ScheduleItem, Document, SubstituteRequest, SystemNotification, TeachingDemo } from './types';
 
 export const ADMIN_EMAIL = 'lehoangngocducnt@gmail.com';
 export const ADMIN_PASS = 'Anphuc01';
 export const ADMIN_USERNAME = 'Anphuc';
 
-// Dữ liệu thực tế sẽ được fetch từ Sheets, khởi tạo mảng trống
+// URL Script mới nhất (Đã sửa lỗi thiếu chữ 'z')
+export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8yqrg9CgMJ3eUShUfPWY01JTZrJaQgAuyqiB6_vileLBgw_ZGuFvd8BN/exec';
+
 export const MOCK_USERS: User[] = [];
 export const MOCK_SCHEDULE: ScheduleItem[] = [];
 export const MOCK_SUBSTITUTES: SubstituteRequest[] = [];

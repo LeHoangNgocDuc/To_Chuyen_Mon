@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SystemNotification } from './types';
-import { ADMIN_EMAIL, ADMIN_PASS, ADMIN_USERNAME } from './constants';
+import { ADMIN_EMAIL, ADMIN_PASS, ADMIN_USERNAME, SCRIPT_URL } from './constants';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import SchedulePage from './pages/SchedulePage';
@@ -12,9 +12,6 @@ import ReportPage from './pages/ReportPage';
 import AssignmentPage from './pages/AssignmentPage';
 import TeachingDemoPage from './pages/TeachingDemoPage';
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJYsC2pw7Dnp88JVzPLs5CwhrUwaUnd8_BgRNHOTivzsNQ93lcdUxS1_JdH1a4JTW6/exec';
-
-const DUTIES_OPTIONS = ['Tổ phó', 'Thanh tra', 'Quản lý phòng tin', 'Quản lý phòng thiết bị'];
 const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
 
 const App: React.FC = () => {
@@ -26,25 +23,25 @@ const App: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Form States
   const [regData, setRegData] = useState({
     name: '', username: '', email: '', password: '',
     role: UserRole.GV, tempSubject: 'Toán', tempGrade: '6', tempClass: '1', isChuNhiem: false
   });
   const [assignedClasses, setAssignedClasses] = useState<string[]>([]);
-  const [selectedDuties, setSelectedDuties] = useState<string[]>([]);
 
   const fetchData = async () => {
+    setIsLoading(true);
     try {
       const [uRes, nRes] = await Promise.all([
         fetch(`${SCRIPT_URL}?type=users`),
         fetch(`${SCRIPT_URL}?type=notifications`)
       ]);
-      const [uData, nData] = await Promise.all([uRes.json(), nRes.json()]);
+      const uData = await uRes.json();
+      const nData = await nRes.json();
       if (Array.isArray(uData)) setUsers(uData);
       if (Array.isArray(nData)) setNotifications(nData);
     } catch (e) {
-      console.error(e);
+      console.error("Fetch Error:", e);
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +77,7 @@ const App: React.FC = () => {
       });
       setUsers(users.map(u => u.id === userId ? updatedUser : u));
       if (currentUser?.id === userId) setCurrentUser(updatedUser);
-      alert('Đã cập nhật vai trò quản lý!');
+      alert(`Đã nâng cấp ${userToUpdate.name} lên vai trò ${newRole}`);
     } catch (e) {
       alert('Lỗi cập nhật vai trò!');
     }
@@ -89,11 +86,6 @@ const App: React.FC = () => {
   const handleUpdateProfile = (updatedUser: User) => {
     setCurrentUser(updatedUser);
     setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-  };
-
-  const handleAddAssignment = () => {
-    const entry = `${regData.tempSubject} ${regData.tempGrade}/${regData.tempClass}`;
-    if (!assignedClasses.includes(entry)) setAssignedClasses([...assignedClasses, entry]);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -111,7 +103,7 @@ const App: React.FC = () => {
       subject: assignedClasses[0]?.split(' ')[0] || 'Toán',
       isApproved: false,
       assignedClasses,
-      duties: selectedDuties,
+      duties: [],
       isChuNhiem: regData.isChuNhiem
     };
 
@@ -145,7 +137,7 @@ const App: React.FC = () => {
     } else alert('Sai thông tin đăng nhập!');
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic">KẾT NỐI HỆ THỐNG...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">KẾT NỐI HỆ THỐNG DRIVE...</div>;
 
   if (!currentUser) {
     return (
@@ -167,7 +159,10 @@ const App: React.FC = () => {
                     <select value={regData.tempSubject} onChange={e => setRegData({...regData, tempSubject: e.target.value})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold">
                       {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <button type="button" onClick={handleAddAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black">+</button>
+                    <button type="button" onClick={() => {
+                        const entry = `${regData.tempSubject} ${regData.tempGrade}/${regData.tempClass}`;
+                        if (!assignedClasses.includes(entry)) setAssignedClasses([...assignedClasses, entry]);
+                    }} className="bg-blue-600 text-white px-5 rounded-xl font-black">+</button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {assignedClasses.map(item => (
