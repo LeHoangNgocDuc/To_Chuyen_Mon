@@ -3,7 +3,7 @@ import { User, UserRole, ScheduleItem, DocType, DocStatus, Document, SubstituteR
 
 export const ADMIN_EMAIL = 'lehoangngocducnt@gmail.com';
 export const ADMIN_PASS = 'Anphuc01';
-export const ADMIN_USERNAME = 'admin';
+export const ADMIN_USERNAME = 'Anphuc';
 
 // Dữ liệu thực tế sẽ được fetch từ Sheets, khởi tạo mảng trống
 export const MOCK_USERS: User[] = [];
