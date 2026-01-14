@@ -11,8 +11,14 @@ export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8y
 // ID thư mục đích trên Google Drive: DATATOTOANTIN
 export const DRIVE_FOLDER_ID = '1drU0oZOez7T5G0vxEqyipD4TqVInTfFk';
 
-// Client ID lấy từ Google Cloud Console (APIs & Services > Credentials)
-// Lưu ý: Người dùng cần điền Client ID thật của họ ở đây để tính năng Direct-Upload hoạt động
+/**
+ * HƯỚNG DẪN KHẮC PHỤC LỖI 401:
+ * 1. Truy cập https://console.cloud.google.com/
+ * 2. Chọn dự án -> APIs & Services -> Credentials.
+ * 3. Tạo "OAuth 2.0 Client ID" loại "Web application".
+ * 4. Thêm "https://to-chuyen-mon.vercel.app" (hoặc domain của bạn) vào mục "Authorized JavaScript origins".
+ * 5. Copy Client ID và dán vào bên dưới.
+ */
 export const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 
 export const MOCK_USERS: User[] = [];

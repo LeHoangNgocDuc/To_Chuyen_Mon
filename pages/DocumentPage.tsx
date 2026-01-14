@@ -20,6 +20,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const tokenClientRef = useRef<any>(null);
 
+  const isConfigValid = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.startsWith('YOUR_GOOGLE_CLIENT_ID');
+
   const [formData, setFormData] = useState({
     title: '',
     type: 'GKI',
@@ -29,17 +31,31 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   });
 
   useEffect(() => {
-    // Khởi tạo Google Identity Services
-    // Fix: Using type assertion to any for window to access google property attached by external script
+    // Khởi tạo Google Identity Services khi script đã load
+    const initGis = () => {
+      if ((window as any).google && isConfigValid) {
+        tokenClientRef.current = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/drive.file',
+          callback: '', 
+        });
+      }
+    };
+
     if ((window as any).google) {
-      tokenClientRef.current = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: '', // Sẽ được gán trong handleUpload
-      });
+      initGis();
+    } else {
+      // Đợi script load nếu chưa có
+      const interval = setInterval(() => {
+        if ((window as any).google) {
+          initGis();
+          clearInterval(interval);
+        }
+      }, 500);
     }
+    
     fetchDocs();
-  }, []);
+  }, [isConfigValid]);
 
   const fetchDocs = async () => {
     setIsLoading(true);
@@ -68,30 +84,26 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  /**
-   * Quy trình Direct-to-Drive (Resumable Upload):
-   * 1. Lấy Access Token qua GIS.
-   * 2. Khởi tạo phiên upload (POST) để lấy Resumable Session URI.
-   * 3. Thực hiện PUT dữ liệu file lên URI đó với Progress tracking (XHR).
-   * 4. Sau khi Drive lưu file thành công, gọi GAS để ghi log vào Sheet.
-   */
   const handleUpload = () => {
+    if (!isConfigValid) {
+      return alert('Hệ thống chưa được cấu hình Client ID. Vui lòng cập nhật GOOGLE_CLIENT_ID trong constants.tsx để sử dụng tính năng nộp file trực tiếp.');
+    }
     if (!formData.title) return alert('Vui lòng nhập tiêu đề!');
     if (formData.category === 'Chuyên đề' && !formData.customThematicName) return alert('Vui lòng nhập tên Chuyên đề!');
     if (!selectedFile) return alert('Vui lòng chọn tệp!');
 
     if (!tokenClientRef.current) {
-      return alert('Hệ thống Google Auth chưa sẵn sàng. Vui lòng thử lại sau vài giây!');
+      return alert('Hệ thống Google Auth đang khởi tạo, vui lòng thử lại sau giây lát!');
     }
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Bước 1: Yêu cầu Access Token
     tokenClientRef.current.callback = async (response: any) => {
       if (response.error !== undefined) {
         setIsUploading(false);
-        return alert('Lỗi xác thực Google: ' + response.error);
+        console.error("Auth Error:", response);
+        return alert('Lỗi xác thực: ' + (response.error_description || response.error));
       }
       const accessToken = response.access_token;
       startDriveUpload(accessToken);
@@ -104,7 +116,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
     try {
       if (!selectedFile) return;
 
-      // Bước 2: Khởi tạo Resumable Session
       const metadata = {
         name: selectedFile.name,
         mimeType: selectedFile.type,
@@ -123,9 +134,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       });
 
       const sessionUri = initResponse.headers.get('Location');
-      if (!sessionUri) throw new Error('Không lấy được Session URI từ Google Drive');
+      if (!sessionUri) throw new Error('Không lấy được Resumable Session URI');
 
-      // Bước 3: Upload dữ liệu file bằng XMLHttpRequest để track progress
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', sessionUri, true);
       xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
@@ -133,7 +143,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 90); // 90% dành cho upload
+          const percent = Math.round((e.loaded / e.total) * 90);
           setUploadProgress(percent);
         }
       };
@@ -142,25 +152,22 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         if (xhr.status === 200 || xhr.status === 201) {
           const driveFile = JSON.parse(xhr.responseText);
           setUploadProgress(95);
-          // Bước 4: Lưu metadata vào Sheet qua GAS
           await syncMetadataToSheet(driveFile.id);
         } else {
-          console.error('Drive Upload Error:', xhr.responseText);
-          alert('Lỗi khi tải file lên Google Drive. Vui lòng thử lại!');
           setIsUploading(false);
+          alert('Lỗi tải lên Drive: ' + xhr.statusText);
         }
       };
 
       xhr.onerror = () => {
-        alert('Lỗi kết nối mạng khi tải lên!');
+        alert('Lỗi kết nối khi tải lên!');
         setIsUploading(false);
       };
 
       xhr.send(selectedFile);
-
     } catch (error) {
       console.error(error);
-      alert('Đã xảy ra lỗi trong quá trình tải lên!');
+      alert('Đã xảy ra lỗi!');
       setIsUploading(false);
     }
   };
@@ -190,7 +197,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         }
       };
 
-      // Gửi metadata tới GAS (sử dụng no-cors vì GAS không hỗ trợ CORS đầy đủ cho JSON)
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -203,12 +209,11 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         setIsUploading(false);
         setShowUpload(false);
         setSelectedFile(null);
-        alert('Nộp bài thành công! File đã lưu vào Drive và Database.');
+        alert('Nộp bài thành công!');
         fetchDocs();
       }, 500);
     } catch (error) {
-      console.error('Sheet Sync Error:', error);
-      alert('Tải file lên Drive thành công nhưng không thể ghi log vào Sheet. Vui lòng báo cáo Quản trị viên!');
+      console.error(error);
       setIsUploading(false);
     }
   };
@@ -220,6 +225,18 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
+      {!isConfigValid && (
+        <div className="bg-amber-50 border border-amber-200 p-6 rounded-[2rem] flex items-start gap-4 shadow-sm animate-pulse">
+           <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center text-white shrink-0">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+           </div>
+           <div>
+              <h4 className="font-black text-amber-800 uppercase italic text-sm">Cảnh báo: Hệ thống chưa cấu hình Direct-Drive</h4>
+              <p className="text-[11px] text-amber-600 font-bold mt-1">Vui lòng cập nhật GOOGLE_CLIENT_ID trong file constants.tsx để nộp file không bị lỗi 401.</p>
+           </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-800 uppercase italic tracking-tight">Thư viện Học liệu</h1>

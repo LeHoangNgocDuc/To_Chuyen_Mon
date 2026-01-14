@@ -52,11 +52,12 @@ const App: React.FC = () => {
   useEffect(() => { fetchData(); }, []);
 
   const handleApproveUser = async (userToApprove: User) => {
-    // Optimistic UI: Cập nhật danh sách ngay lập tức
+    // Chạy liền (Optimistic UI): Cập nhật danh sách local ngay lập tức
     const updatedUser = { ...userToApprove, isApproved: true };
     setUsers(prev => prev.map(u => u.id === userToApprove.id ? updatedUser : u));
 
     try {
+      // Gửi ngầm tới server
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -66,9 +67,11 @@ const App: React.FC = () => {
           data: updatedUser 
         })
       });
-      // Giả định thành công vì no-cors
+      // Với no-cors, ta giả định thành công.
     } catch (e) {
-      alert('Lỗi khi lưu phê duyệt! Hệ thống sẽ tải lại dữ liệu.');
+      console.error("Approve error:", e);
+      // Nếu có lỗi mạng thật sự, báo và tải lại dữ liệu để khớp server
+      alert('Lỗi kết nối khi lưu phê duyệt! Hệ thống sẽ đồng bộ lại.');
       fetchData();
     }
   };
