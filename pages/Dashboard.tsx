@@ -90,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
         mode: 'no-cors',
         body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
       });
-      alert('Đã cập nhật phân công giảng dạy!');
+      alert('Đã cập nhật phân công chuyên môn!');
       setShowProfileModal(false);
       if (onUpdateProfile) onUpdateProfile(updatedUser);
       onRefresh();
@@ -115,9 +115,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
             </div>
           </div>
           <button onClick={() => {
-            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])] });
+            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])], tempSubject: user.subject });
             setShowProfileModal(true);
-          }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95">
+          }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95 shadow-lg shadow-blue-900/40">
             Sửa phân công dạy
           </button>
         </div>
@@ -164,11 +164,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl">
              <h3 className="text-lg font-black text-slate-800 uppercase italic mb-6">Trạng thái</h3>
              <div className="space-y-4">
-                <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100">
+                <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 shadow-sm">
                   <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Điểm thi đua</div>
                   <div className="text-4xl font-black text-blue-600 tracking-tighter">189.4</div>
                 </div>
-                <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
+                <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 shadow-sm">
                   <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1 italic">Xếp hạng tổ</div>
                   <div className="text-4xl font-black text-emerald-600 tracking-tighter">#2</div>
                 </div>
@@ -180,10 +180,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
       {showProfileModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
            <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
-              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Sửa phân công dạy</h3>
+              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic tracking-tight">Sửa phân công chuyên môn</h3>
               <div className="space-y-6">
                 <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-4">
-                  <div className="text-[11px] font-black text-blue-800 uppercase italic tracking-widest">Thêm phân công mới</div>
+                  <div className="text-[11px] font-black text-blue-800 uppercase italic tracking-widest">Cập nhật danh sách lớp</div>
                   <div className="space-y-2">
                     <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-blue-600 outline-none shadow-sm">
                       {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -200,7 +200,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                   </div>
                   
                   <div className="pt-4 border-t border-blue-100">
-                    <div className="text-[9px] font-black text-blue-400 uppercase mb-2">Phân công hiện tại ({editData.assignedClasses.length}):</div>
+                    <div className="text-[9px] font-black text-blue-400 uppercase mb-2 italic">Lớp đang giảng dạy ({editData.assignedClasses.length}):</div>
                     <div className="flex flex-wrap gap-2">
                       {editData.assignedClasses.map(item => (
                         <div key={item} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 rounded-xl text-[9px] font-black text-blue-600 shadow-sm">
@@ -211,12 +211,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                     </div>
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-400 italic text-center">Gợi ý: Thêm môn/khối/lớp rồi nhấn dấu (+) để cập nhật nhanh.</div>
+                <div className="text-[10px] text-slate-400 italic text-center">Gợi ý: Chọn Môn/Khối/Lớp rồi nhấn (+) để thêm nhanh.</div>
               </div>
               <div className="mt-10 flex gap-4">
-                <button onClick={() => setShowProfileModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
-                <button disabled={isSavingProfile} onClick={handleSaveProfile} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase shadow-xl tracking-widest active:scale-95 transition-all">
-                  {isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+                <button onClick={() => setShowProfileModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest italic hover:text-slate-900 transition-colors">Hủy bỏ</button>
+                <button disabled={isSavingProfile} onClick={handleSaveProfile} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase shadow-xl tracking-widest active:scale-95 transition-all shadow-slate-200">
+                  {isSavingProfile ? 'Đang cập nhật...' : 'Xác nhận thay đổi'}
                 </button>
               </div>
            </div>
@@ -229,11 +229,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
               <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Đăng thông báo tổ</h3>
               <div className="space-y-6">
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Nội dung thông báo</label>
-                   <textarea rows={4} value={newNotif.content} onChange={e => setNewNotif({...newNotif, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 shadow-inner" placeholder="Viết nội dung cho tổ..."></textarea>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">Nội dung thông báo</label>
+                   <textarea rows={4} value={newNotif.content} onChange={e => setNewNotif({...newNotif, content: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-6 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 shadow-inner" placeholder="Nhập nội dung thông báo..."></textarea>
                 </div>
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Thời gian thực hiện (Nếu có)</label>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 italic">Hạn thực hiện</label>
                    <input type="date" value={newNotif.executionTime} onChange={e => setNewNotif({...newNotif, executionTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold shadow-inner" />
                 </div>
                 <div className="flex gap-4">
@@ -248,9 +248,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                 </div>
               </div>
               <div className="mt-10 flex gap-4">
-                <button onClick={() => setShowNotifModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
+                <button onClick={() => setShowNotifModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Hủy bỏ</button>
                 <button disabled={isPosting} onClick={handlePostNotif} className="flex-1 py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl active:scale-95 transition-all">
-                  {isPosting ? 'Đang đăng...' : 'Xác nhận đăng'}
+                  {isPosting ? 'Đang đăng...' : 'Đăng ngay'}
                 </button>
               </div>
            </div>

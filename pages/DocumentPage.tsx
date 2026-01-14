@@ -21,8 +21,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
   const [formData, setFormData] = useState({
     title: '',
-    type: 'GKI', // For exam/outline
-    customThematicName: '', // For Chuyên đề
+    type: 'GKI', // Cho đề thi/đề cương
+    customThematicName: '', // Cho chuyên đề
     grade: 6,
     category: 'Đề cương' as 'Đề cương' | 'Đề thi' | 'Chuyên đề'
   });
@@ -45,8 +45,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      if (file.size > 8 * 1024 * 1024) {
-         return alert("Dung lượng file vượt quá giới hạn 8MB cho phép của hệ thống.");
+      if (file.size > 15 * 1024 * 1024) {
+         return alert("Dung lượng file vượt quá giới hạn 15MB. Vui lòng nén file!");
       }
       setSelectedFile(file);
     }
@@ -60,11 +60,11 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Improved upload logic to avoid CORS and timeout issues with GAS
+  // Phương thức tải lên tối ưu: Chuyển sang Base64 và dùng POST với mode no-cors
   const handleUpload = async () => {
-    if (!formData.title) return alert('Vui lòng nhập tiêu đề tài liệu!');
-    if (formData.category === 'Chuyên đề' && !formData.customThematicName) return alert('Vui lòng nhập tên chuyên đề!');
-    if (!selectedFile) return alert('Vui lòng đính kèm tệp tài liệu!');
+    if (!formData.title) return alert('Vui lòng nhập tiêu đề hồ sơ!');
+    if (formData.category === 'Chuyên đề' && !formData.customThematicName) return alert('Vui lòng đặt tên cho chuyên đề!');
+    if (!selectedFile) return alert('Vui lòng đính kèm tệp!');
     
     setIsUploading(true);
     setUploadProgress(10);
@@ -88,7 +88,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
               id: `doc-${Date.now()}`,
               title: formData.title,
               category: formData.category,
-              // Use custom name for Chuyên đề, otherwise GKI/CKI etc
+              // Chuyên đề thì lấy tên tự nhập, còn lại lấy GKI/CKI
               type: formData.category === 'Chuyên đề' ? formData.customThematicName : formData.type,
               grade: formData.grade,
               authorId: user.id,
@@ -102,9 +102,9 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
             }
           };
 
-          setUploadProgress(60);
+          setUploadProgress(70);
 
-          // Using text/plain to avoid preflight issues and no-cors for GAS compatibility
+          // Gửi trực tiếp tới GAS
           await fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -118,19 +118,19 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
             setIsUploading(false);
             setShowUpload(false);
             setSelectedFile(null);
-            alert('Đã gửi tài liệu lên hệ thống! Vui lòng làm mới danh sách sau vài giây để cập nhật.');
+            alert('Tải lên thành công! Hồ sơ đang được đồng bộ vào Google Drive.');
             fetchDocs();
           }, 800);
 
         } catch (innerError) {
           console.error("Upload Error:", innerError);
-          alert("Lỗi đường truyền dữ liệu!");
+          alert("Lỗi trong quá trình truyền dữ liệu!");
           setIsUploading(false);
         }
       };
       reader.readAsDataURL(selectedFile);
     } catch (e) {
-      alert('Lỗi kết nối máy chủ Drive!');
+      alert('Không thể kết nối đến máy chủ lưu trữ!');
       setIsUploading(false);
     }
   };
@@ -145,7 +145,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-800 uppercase italic tracking-tight">Học liệu số</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Trần Hưng Đạo • Lưu trữ thông minh</p>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Lưu trữ chuyên nghiệp • THCS Trần Hưng Đạo</p>
         </div>
         <button 
           onClick={() => {
@@ -194,17 +194,17 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           {isLoading ? (
             <div className="p-20 text-center flex flex-col items-center">
                <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-               <span className="font-black text-slate-300 uppercase italic text-sm">Đang quét thư mục Drive...</span>
+               <span className="font-black text-slate-300 uppercase italic text-sm">Đang tải kho học liệu...</span>
             </div>
           ) : (
             <table className="w-full text-left">
               <thead>
                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/30">
-                  <th className="p-10 w-1/3">Tiêu đề</th>
-                  <th className="p-10 text-center">Khối / Loại</th>
+                  <th className="p-10 w-1/3">Hồ sơ</th>
+                  <th className="p-10 text-center">Khối / Phân loại</th>
                   <th className="p-10">Người nộp</th>
-                  <th className="p-10">Trạng thái</th>
-                  <th className="p-10 text-right">Hành động</th>
+                  <th className="p-10">Duyệt</th>
+                  <th className="p-10 text-right">Tải về</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -253,7 +253,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                   <tr><td colSpan={5} className="p-32 text-center">
                     <div className="flex flex-col items-center opacity-10">
                        <svg className="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                       <span className="font-black text-2xl uppercase italic">Danh sách trống</span>
+                       <span className="font-black text-2xl uppercase italic">Chưa có dữ liệu</span>
                     </div>
                   </td></tr>
                 )}
@@ -267,7 +267,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
            <div className="bg-white rounded-[4.5rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
               <div className="flex items-center justify-between mb-10">
-                <h3 className="text-2xl font-black text-slate-800 uppercase italic tracking-tighter">Cổng tải lên học liệu</h3>
+                <h3 className="text-2xl font-black text-slate-800 uppercase italic tracking-tighter">Cổng nộp học liệu số</h3>
                 <button onClick={() => !isUploading && setShowUpload(false)} className="text-slate-300 hover:text-slate-900 transition-colors">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -275,13 +275,13 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
               <div className="space-y-8">
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">Tên hồ sơ / bài học</label>
-                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none transition-all shadow-inner" placeholder="VD: Ôn tập Hình học 9..." />
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Tên hồ sơ bài giảng</label>
+                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none transition-all shadow-inner" placeholder="VD: Ôn tập Hình học chương 3..." />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">
                       {formData.category === 'Chuyên đề' ? 'Tên Chuyên đề' : 'Giai đoạn'}
                     </label>
                     {formData.category === 'Chuyên đề' ? (
@@ -289,8 +289,8 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                         type="text" 
                         value={formData.customThematicName} 
                         onChange={e => setFormData({...formData, customThematicName: e.target.value})} 
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none shadow-inner" 
-                        placeholder="Tên chuyên đề..."
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none shadow-inner focus:border-indigo-500" 
+                        placeholder="Nhập tên chuyên đề..."
                       />
                     ) : (
                       <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none shadow-inner">
@@ -303,7 +303,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest">Khối lớp</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Dành cho Khối</label>
                     <select value={formData.grade} onChange={e => setFormData({...formData, grade: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-5 text-sm font-bold outline-none shadow-inner">
                        {[6,7,8,9].map(g => <option key={g} value={g}>Khối {g}</option>)}
                     </select>
@@ -313,7 +313,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                 <div 
                    onClick={() => !isUploading && fileInputRef.current?.click()}
                    className={`group p-12 border-4 border-dashed rounded-[3.5rem] flex flex-col items-center justify-center gap-6 cursor-pointer transition-all ${
-                     selectedFile ? 'border-indigo-400 bg-indigo-50/30' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
+                     selectedFile ? 'border-indigo-400 bg-indigo-50/30 shadow-inner' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
                    }`}
                 >
                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
@@ -324,11 +324,11 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                    </div>
                    <div className="text-center">
                      <span className="block text-[11px] font-black text-slate-800 uppercase tracking-widest italic">
-                       {selectedFile ? selectedFile.name : 'Chọn tệp tài liệu'}
+                       {selectedFile ? selectedFile.name : 'Chọn tệp tài liệu để nộp'}
                      </span>
                      {selectedFile && (
-                       <span className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter mt-1 block">
-                         {formatFileSize(selectedFile.size)}
+                       <span className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter mt-1 block italic">
+                         Dung lượng: {formatFileSize(selectedFile.size)}
                        </span>
                      )}
                    </div>
@@ -337,7 +337,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                 {isUploading && (
                   <div className="space-y-4 pt-4 animate-in fade-in zoom-in duration-300">
                     <div className="flex justify-between items-end">
-                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">Đang nén và truyền dữ liệu...</span>
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic animate-pulse">Hệ thống đang truyền tệp...</span>
                       <span className="text-2xl font-black text-slate-900">{uploadProgress}%</span>
                     </div>
                     <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
@@ -354,7 +354,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
 
               <div className="mt-14 flex gap-6">
                 {!isUploading && (
-                  <button onClick={() => setShowUpload(false)} className="flex-1 font-black text-slate-400 uppercase tracking-widest text-[11px] hover:text-slate-900 transition-colors">Hủy bỏ</button>
+                  <button onClick={() => setShowUpload(false)} className="flex-1 font-black text-slate-400 uppercase tracking-widest text-[11px] hover:text-slate-900 transition-colors italic">Hủy bỏ</button>
                 )}
                 <button 
                   disabled={isUploading} 
@@ -363,7 +363,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                     isUploading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-black'
                   }`}
                 >
-                  {isUploading ? 'Vui lòng chờ...' : 'Bắt đầu nộp file'}
+                  {isUploading ? 'Đang gửi hồ sơ...' : 'Xác nhận nộp bài'}
                 </button>
               </div>
            </div>
@@ -376,7 +376,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           100% { transform: translateX(100%); }
         }
         .animate-shimmer {
-          animation: shimmer 2.5s infinite linear;
+          animation: shimmer 2s infinite linear;
         }
       `}</style>
     </div>

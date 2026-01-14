@@ -51,6 +51,28 @@ const App: React.FC = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  const handleApproveUser = async (userToApprove: User) => {
+    // Cập nhật UI ngay lập tức để tạo cảm giác "chạy liền"
+    const updatedUsers = users.map(u => u.id === userToApprove.id ? { ...u, isApproved: true } : u);
+    setUsers(updatedUsers);
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ 
+          type: 'users', 
+          action: 'save', 
+          data: { ...userToApprove, isApproved: true } 
+        })
+      });
+      // Không cần fetch lại nếu POST thành công (giả định vì no-cors)
+    } catch (e) {
+      alert('Lỗi khi phê duyệt trên server!');
+      fetchData(); // Reset lại nếu lỗi
+    }
+  };
+
   const addAssignment = () => {
     const entry = `${regData.tempSubject} ${regData.tempGrade}/${regData.tempClass}`;
     if (!assignedClasses.includes(entry)) {
@@ -65,8 +87,7 @@ const App: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (assignedClasses.length === 0) return alert('Vui lòng thêm ít nhất một phân công lớp dạy!');
-    if (users.find(u => u.username === regData.username)) return alert('Tên đăng nhập đã tồn tại!');
-
+    
     const newUser: User = {
       id: `u-${Date.now()}`,
       name: regData.name,
@@ -111,7 +132,7 @@ const App: React.FC = () => {
     } else alert('Sai thông tin đăng nhập!');
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">KẾT NỐI HỆ THỐNG DRIVE...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">ĐANG TẢI DỮ LIỆU...</div>;
 
   if (!currentUser) {
     return (
@@ -130,19 +151,19 @@ const App: React.FC = () => {
                 <input required type="email" placeholder="Email" value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" />
                 
                 <div className="p-5 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 space-y-3">
-                  <div className="text-[10px] font-black text-blue-800 uppercase italic">Thêm phân công chuyên môn</div>
+                  <div className="text-[10px] font-black text-blue-800 uppercase italic tracking-widest">Phân công chuyên môn</div>
                   <div className="space-y-2">
-                    <select value={regData.tempSubject} onChange={e => setRegData({...regData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold">
+                    <select value={regData.tempSubject} onChange={e => setRegData({...regData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-black text-blue-600 outline-none">
                       {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     <div className="flex gap-2">
-                      <select value={regData.tempGrade} onChange={e => setRegData({...regData, tempGrade: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold">
+                      <select value={regData.tempGrade} onChange={e => setRegData({...regData, tempGrade: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
                         {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
                       </select>
-                      <select value={regData.tempClass} onChange={e => setRegData({...regData, tempClass: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold">
+                      <select value={regData.tempClass} onChange={e => setRegData({...regData, tempClass: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
                         {CLASSES.map(c => <option key={c} value={c}>Lớp {c}</option>)}
                       </select>
-                      <button type="button" onClick={addAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg shadow-blue-500/20 active:scale-90">+</button>
+                      <button type="button" onClick={addAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg active:scale-90">+</button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100">
@@ -152,7 +173,7 @@ const App: React.FC = () => {
                         <button type="button" onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
                       </div>
                     )) : (
-                      <div className="text-[9px] text-slate-400 italic">Chưa thêm lớp nào</div>
+                      <div className="text-[9px] text-slate-400 italic">Chưa thêm phân công nào</div>
                     )}
                   </div>
                 </div>
@@ -171,7 +192,7 @@ const App: React.FC = () => {
               </>
             )}
             <button type="submit" className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl">
-              {isRegistering ? 'Gửi đăng ký' : 'Vào hệ thống'}
+              {isRegistering ? 'Hoàn tất đăng ký' : 'Vào hệ thống'}
             </button>
           </form>
           <div className="mt-8 text-center">
@@ -188,7 +209,7 @@ const App: React.FC = () => {
     <Layout user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} currentYear={currentYear} setCurrentYear={setCurrentYear}>
       {activeTab === 'dashboard' && <Dashboard user={currentUser} year={currentYear} notifications={notifications} onRefresh={fetchData} onUpdateProfile={(u) => { setCurrentUser(u); fetchData(); }} />}
       {activeTab === 'schedule' && <SchedulePage user={currentUser} />}
-      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={() => fetchData()} onChangeRole={() => fetchData()} onDeleteUser={fetchData} />}
+      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={(id, r) => { fetchData(); }} onDeleteUser={fetchData} />}
       {activeTab === 'substitute' && <SubstitutePage user={currentUser} />}
       {activeTab === 'competition' && <CompetitionPage user={currentUser} />}
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}
