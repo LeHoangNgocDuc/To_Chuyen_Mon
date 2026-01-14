@@ -4,6 +4,8 @@ import { User, UserRole, SystemNotification } from '../types';
 import { SCRIPT_URL } from '../constants';
 
 const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
+const GRADES = [6, 7, 8, 9];
+const CLASSES = [1, 2, 3, 4, 5, 6];
 
 interface DashboardProps {
   user: User;
@@ -27,9 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
   });
 
   const [editData, setEditData] = useState({
-    tempSubject: 'Toán',
-    tempGrade: '6',
-    tempClass: '1',
+    tempSubject: user.subject || 'Toán',
     assignedClasses: [...(user.assignedClasses || [])]
   });
 
@@ -61,27 +61,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     }
   };
 
-  const handleAddAssignment = () => {
-    const entry = `${editData.tempSubject} ${editData.tempGrade}/${editData.tempClass}`;
-    if (!editData.assignedClasses.includes(entry)) {
+  const toggleClass = (grade: number, cls: number) => {
+    const entry = `${editData.tempSubject} ${grade}/${cls}`;
+    if (editData.assignedClasses.includes(entry)) {
+      setEditData({ ...editData, assignedClasses: editData.assignedClasses.filter(c => c !== entry) });
+    } else {
       setEditData({ ...editData, assignedClasses: [...editData.assignedClasses, entry] });
     }
-  };
-
-  const removeAssignment = (item: string) => {
-    setEditData({ ...editData, assignedClasses: editData.assignedClasses.filter(i => i !== item) });
   };
 
   const handleSaveProfile = async () => {
     if (editData.assignedClasses.length === 0) return alert('Vui lòng có ít nhất một lớp phân công!');
     
     setIsSavingProfile(true);
-    const primarySubject = editData.assignedClasses[0].split(' ')[0];
-    
     const updatedUser = { 
       ...user, 
       assignedClasses: editData.assignedClasses,
-      subject: primarySubject 
+      subject: editData.tempSubject // Cập nhật môn dạy chính theo lựa chọn hiện tại
     };
 
     try {
@@ -90,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
         mode: 'no-cors',
         body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
       });
-      alert('Đã cập nhật phân công chuyên môn và môn dạy chính!');
+      alert('Đã cập nhật phân công giảng dạy!');
       setShowProfileModal(false);
       if (onUpdateProfile) onUpdateProfile(updatedUser);
       onRefresh();
@@ -115,7 +111,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
             </div>
           </div>
           <button onClick={() => {
-            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])] });
+            setEditData({ tempSubject: user.subject, assignedClasses: [...(user.assignedClasses || [])] });
             setShowProfileModal(true);
           }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95">
             Sửa phân công dạy
@@ -178,35 +174,61 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
       </div>
 
       {showProfileModal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6">
-           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
-              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Cập nhật phân công</h3>
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
+           <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
+              <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Cập nhật phân công chuyên môn</h3>
               <div className="space-y-6">
-                <div className="p-5 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 space-y-4">
-                  <div className="grid grid-cols-1 gap-2">
-                    <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
+                <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-blue-800 uppercase tracking-widest">Môn giảng dạy</label>
+                    <select value={editData.tempSubject} onChange={e => setEditData({...editData, tempSubject: e.target.value})} className="bg-white border border-blue-200 rounded-xl px-4 py-2 text-xs font-black text-blue-600 outline-none shadow-sm">
                       {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <div className="flex gap-2">
-                      <select value={editData.tempGrade} onChange={e => setEditData({...editData, tempGrade: e.target.value})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
-                        {[6,7,8,9].map(g => <option key={g} value={g}>Khối {g}</option>)}
-                      </select>
-                      <select value={editData.tempClass} onChange={e => setEditData({...editData, tempClass: e.target.value})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold shadow-sm">
-                        {[1,2,3,4,5,6].map(c => <option key={c} value={c}>Lớp {c}</option>)}
-                      </select>
-                      <button onClick={handleAddAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg">+</button>
-                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 pt-4 border-t border-blue-100">
-                    {editData.assignedClasses.map(item => (
-                      <div key={item} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-xl text-[10px] font-black shadow-sm group">
-                        {item}
-                        <button onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
+                  
+                  <div className="space-y-4">
+                    {GRADES.map(grade => (
+                      <div key={grade} className="space-y-2">
+                        <div className="text-[10px] font-black text-slate-400 uppercase">Khối {grade}</div>
+                        <div className="grid grid-cols-6 gap-2">
+                          {CLASSES.map(cls => {
+                            const entry = `${editData.tempSubject} ${grade}/${cls}`;
+                            const isActive = editData.assignedClasses.includes(entry);
+                            return (
+                              <button 
+                                key={cls} 
+                                type="button" 
+                                onClick={() => toggleClass(grade, cls)}
+                                className={`py-3 rounded-xl text-[10px] font-black transition-all border ${
+                                  isActive 
+                                  ? 'bg-blue-600 text-white border-blue-700 shadow-md' 
+                                  : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
+                                }`}
+                              >
+                                {grade}/{cls}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>
+
+                  {editData.assignedClasses.length > 0 && (
+                    <div className="pt-4 border-t border-blue-100">
+                      <div className="text-[9px] font-black text-blue-400 uppercase mb-2">Toàn bộ phân công ({editData.assignedClasses.length} lớp):</div>
+                      <div className="flex flex-wrap gap-2">
+                        {editData.assignedClasses.map(item => (
+                          <div key={item} className="flex items-center gap-2 px-2 py-1 bg-white border border-blue-200 rounded-lg text-[8px] font-black text-blue-600">
+                            {item}
+                            <button onClick={(e) => { e.stopPropagation(); setEditData({...editData, assignedClasses: editData.assignedClasses.filter(i => i !== item)}); }} className="text-red-400 hover:text-red-600">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-[10px] text-slate-400 italic">Môn chính của bạn sẽ tự động cập nhật theo lớp đầu tiên bạn chọn.</div>
+                <div className="text-[10px] text-slate-400 italic text-center">Gợi ý: Chọn môn rồi chọn lớp trên lưới để thêm nhanh phân công mới.</div>
               </div>
               <div className="mt-10 flex gap-4">
                 <button onClick={() => setShowProfileModal(false)} className="flex-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Hủy bỏ</button>
@@ -219,7 +241,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
       )}
 
       {showNotifModal && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
            <div className="bg-white rounded-[3.5rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
               <h3 className="text-2xl font-black text-slate-800 mb-8 uppercase italic">Đăng thông báo tổ</h3>
               <div className="space-y-6">

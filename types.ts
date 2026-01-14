@@ -101,7 +101,7 @@ export type DocType = string;
 export interface Document {
   id: string;
   title: string;
-  category: 'Đề cương' | 'Đề thi';
+  category: 'Đề cương' | 'Đề thi' | 'Chuyên đề';
   type: DocType;
   grade: number;
   authorId: string;
