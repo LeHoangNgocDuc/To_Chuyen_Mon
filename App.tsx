@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SystemNotification } from './types';
 import { ADMIN_EMAIL, ADMIN_PASS, ADMIN_USERNAME, SCRIPT_URL } from './constants';
@@ -33,34 +32,38 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    try {
-      const [uRes, nRes] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=users`),
-        fetch(`${SCRIPT_URL}?type=notifications`)
-      ]);
-      const uData = await uRes.json();
-      const nData = await nRes.json();
-      if (Array.isArray(uData)) setUsers(uData);
-      if (Array.isArray(nData)) setNotifications(nData);
-    } catch (e) {
-      console.error("Fetch Error:", e);
-    } finally {
-      setIsLoading(false);
-    }
+    
+    // Fetch Users
+    fetch(`${SCRIPT_URL}?type=users`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setUsers(data);
+        else console.warn("Dữ liệu Users không phải mảng:", data);
+      })
+      .catch(err => console.error("Lỗi tải Users:", err));
+
+    // Fetch Notifications
+    fetch(`${SCRIPT_URL}?type=notifications`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setNotifications(data);
+      })
+      .catch(err => console.error("Lỗi tải Notifications:", err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const handleApproveUser = async (userToApprove: User) => {
-    // Chạy liền (Optimistic UI): Cập nhật danh sách local ngay lập tức
+    // Chạy liền (Optimistic UI)
     const updatedUser = { ...userToApprove, isApproved: true };
     setUsers(prev => prev.map(u => u.id === userToApprove.id ? updatedUser : u));
 
     try {
-      // Gửi ngầm tới server
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ 
           type: 'users', 
           action: 'save', 
@@ -70,6 +73,28 @@ const App: React.FC = () => {
     } catch (e) {
       console.error("Approve error:", e);
       alert('Lỗi kết nối khi lưu phê duyệt! Hệ thống sẽ đồng bộ lại.');
+      fetchData();
+    }
+  };
+
+  const handleChangeRole = async (userId: string, newRole: UserRole) => {
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    const updatedUser = { ...targetUser, role: newRole };
+    
+    // Optimistic Update
+    setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
+      });
+    } catch (e) {
+      console.error("Role change error:", e);
+      alert('Lỗi khi lưu thay đổi vai trò!');
       fetchData();
     }
   };
@@ -107,6 +132,7 @@ const App: React.FC = () => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'users', action: 'save', data: newUser })
       });
       setUsers([...users, newUser]);
@@ -119,6 +145,7 @@ const App: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    // Admin Backdoor
     if (regData.username === ADMIN_USERNAME && regData.password === ADMIN_PASS) {
       setCurrentUser({
         id: 'admin-001', name: 'Quản trị viên (An Phục)', username: ADMIN_USERNAME, email: ADMIN_EMAIL,
@@ -126,11 +153,15 @@ const App: React.FC = () => {
       });
       return;
     }
+    
+    // Normal Login
     const found = users.find(u => u.username === regData.username && u.password === regData.password);
     if (found) {
       if (!found.isApproved) return alert('Tài khoản chưa được phê duyệt!');
       setCurrentUser(found);
-    } else alert('Sai thông tin đăng nhập!');
+    } else {
+      alert('Sai thông tin đăng nhập hoặc dữ liệu chưa tải xong!');
+    }
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-300 animate-pulse bg-slate-100 uppercase italic tracking-widest">ĐANG TẢI HỆ THỐNG...</div>;
@@ -210,7 +241,7 @@ const App: React.FC = () => {
     <Layout user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} currentYear={currentYear} setCurrentYear={setCurrentYear}>
       {activeTab === 'dashboard' && <Dashboard user={currentUser} year={currentYear} notifications={notifications} onRefresh={fetchData} onUpdateProfile={(u) => { setCurrentUser(u); fetchData(); }} />}
       {activeTab === 'schedule' && <SchedulePage user={currentUser} />}
-      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={(id, r) => { fetchData(); }} onDeleteUser={fetchData} onRefresh={fetchData} />}
+      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={handleChangeRole} onDeleteUser={fetchData} onRefresh={fetchData} />}
       {activeTab === 'substitute' && <SubstitutePage user={currentUser} />}
       {activeTab === 'competition' && <CompetitionPage user={currentUser} />}
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}

@@ -28,35 +28,39 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
   const fetchData = async () => {
     setIsSyncing(true);
     try {
-      const [uRes, sRes] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=users`),
-        fetch(`${SCRIPT_URL}?type=scores`)
-      ]);
-      const uData = await uRes.json();
-      const sData = await sRes.json();
-      
-      if (Array.isArray(uData)) setUsers(uData);
-      
-      if (Array.isArray(sData)) {
-        const newScores: Record<string, TeacherScoreRow> = {};
-        sData.forEach((item: any) => {
-          if (item.teacherId) {
-            newScores[item.teacherId] = {
-              ...item,
-              ...Object.keys(item).reduce((acc: any, key) => {
-                 if (key !== 'teacherId' && key !== 'teacherName' && key !== 'lastUpdated') {
-                   acc[key] = parseFloat(item[key]) || 0;
-                 }
-                 return acc;
-              }, {})
-            };
+      // Independent fetches to avoid all failing
+      fetch(`${SCRIPT_URL}?type=users`)
+        .then(res => res.json())
+        .then(data => {
+            if (Array.isArray(data)) setUsers(data);
+        })
+        .catch(err => console.error(err));
+
+      fetch(`${SCRIPT_URL}?type=scores`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const newScores: Record<string, TeacherScoreRow> = {};
+            data.forEach((item: any) => {
+              if (item.teacherId) {
+                newScores[item.teacherId] = {
+                  ...item,
+                  ...Object.keys(item).reduce((acc: any, key) => {
+                     if (key !== 'teacherId' && key !== 'teacherName' && key !== 'lastUpdated') {
+                       acc[key] = parseFloat(item[key]) || 0;
+                     }
+                     return acc;
+                  }, {})
+                };
+              }
+            });
+            setScores(newScores);
           }
-        });
-        setScores(newScores);
-      }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setIsSyncing(false));
     } catch (error) {
-      console.error('Lỗi khi tải dữ liệu từ Sheet:', error);
-    } finally {
+      console.error('Lỗi khởi tạo:', error);
       setIsSyncing(false);
     }
   };
@@ -75,6 +79,7 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors', 
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'scores', action: 'save', data: scoreData })
       });
       alert('Đã đồng bộ điểm lên Google Sheet!');

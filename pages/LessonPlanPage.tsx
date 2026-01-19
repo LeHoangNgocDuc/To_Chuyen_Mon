@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, LessonPlanReview } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -80,6 +79,7 @@ const LessonPlanPage: React.FC<LessonPlanPageProps> = ({ user, users }) => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'lessonPlans', action: 'save', data: updatedReview })
       });
       

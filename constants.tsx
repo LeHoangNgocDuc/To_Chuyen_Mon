@@ -1,4 +1,3 @@
-
 import { User, UserRole, ScheduleItem, Document, SubstituteRequest, SystemNotification, TeachingDemo } from './types';
 
 export const ADMIN_EMAIL = 'lehoangngocducnt@gmail.com';

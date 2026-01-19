@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, UserRole, SystemNotification } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -51,6 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'notifications', action: 'save', data })
       });
       alert('Đã đăng thông báo tổ!');
@@ -88,6 +88,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
       });
       alert('Đã cập nhật phân công chuyên môn!');

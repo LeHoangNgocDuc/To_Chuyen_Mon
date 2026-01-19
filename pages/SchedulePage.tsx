@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, ScheduleItem } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -57,6 +56,7 @@ const SchedulePage: React.FC<SchedulePageProps> = ({ user }) => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'schedule', action: 'save', data: dataToSave })
       });
       setSchedule([...schedule.filter(s => s.id !== dataToSave.id), dataToSave as ScheduleItem]);

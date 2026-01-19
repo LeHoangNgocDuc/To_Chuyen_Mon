@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SubstituteRequest } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -37,14 +36,15 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [subRes, userRes] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=substitutes`),
-        fetch(`${SCRIPT_URL}?type=users`)
-      ]);
-      const subs = await subRes.json();
-      const usrs = await userRes.json();
-      if (Array.isArray(subs)) setSubstitutes(subs);
-      if (Array.isArray(usrs)) setUsers(usrs);
+      fetch(`${SCRIPT_URL}?type=substitutes`)
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setSubstitutes(data); })
+        .catch(e => console.error(e));
+      
+      fetch(`${SCRIPT_URL}?type=users`)
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setUsers(data); })
+        .catch(e => console.error(e));
     } catch (e) {
       console.error(e);
     } finally {
@@ -62,6 +62,7 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'substitutes', action: 'save', data: newReq })
       });
       alert('Đã cập nhật phiếu dạy thay!');
@@ -85,6 +86,7 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
     await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ type: 'substitutes', action: 'save', data: updatedSub })
     });
   };

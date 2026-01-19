@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, TeachingDemo, ScheduleItem } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -32,15 +31,8 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [demoRes, schRes] = await Promise.all([
-        fetch(`${SCRIPT_URL}?type=demos`),
-        fetch(`${SCRIPT_URL}?type=schedule`)
-      ]);
-      const demoData = await demoRes.json();
-      const schData = await schRes.json();
-      
-      if (Array.isArray(demoData)) setDemos(demoData);
-      if (Array.isArray(schData)) setSchedule(schData);
+      fetch(`${SCRIPT_URL}?type=demos`).then(r => r.json()).then(d => Array.isArray(d) && setDemos(d)).catch(console.error);
+      fetch(`${SCRIPT_URL}?type=schedule`).then(r => r.json()).then(d => Array.isArray(d) && setSchedule(d)).catch(console.error);
     } catch (e) {
       console.error(e);
     } finally {
@@ -82,6 +74,7 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'demos', action: 'save', data: dataToSave })
       });
       alert('Đăng ký thao giảng thành công!');
@@ -103,6 +96,7 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
     await fetch(SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ type: 'demos', action: 'save', data: updatedDemo })
     });
   };
