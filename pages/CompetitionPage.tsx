@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, UserRole, TeacherScoreRow } from '../types';
 import { SCRIPT_URL } from '../constants';
@@ -12,30 +13,22 @@ const DEFAULT_SCORES: Omit<TeacherScoreRow, 'teacherId'> = {
 
 interface CompetitionPageProps {
   user: User;
+  users: User[];
 }
 
 type Period = 'HKI' | 'HKII' | 'Cả năm';
 
-const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
+const CompetitionPage: React.FC<CompetitionPageProps> = ({ user, users }) => {
   const [activePeriod, setActivePeriod] = useState<Period>('HKI');
   const [viewMode, setViewMode] = useState<'Summary' | 'Excel'>('Excel');
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(user.id);
   const [isSyncing, setIsSyncing] = useState(false);
   const [scores, setScores] = useState<Record<string, TeacherScoreRow>>({});
-  const [users, setUsers] = useState<User[]>([]);
 
   const fetchData = async () => {
     setIsSyncing(true);
     try {
-      // Independent fetches to avoid all failing
-      fetch(`${SCRIPT_URL}?type=users`)
-        .then(res => res.json())
-        .then(data => {
-            if (Array.isArray(data)) setUsers(data);
-        })
-        .catch(err => console.error(err));
-
       fetch(`${SCRIPT_URL}?type=scores`)
         .then(res => res.json())
         .then(data => {

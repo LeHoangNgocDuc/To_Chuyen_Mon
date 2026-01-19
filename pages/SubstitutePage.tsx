@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SubstituteRequest } from '../types';
 import { SCRIPT_URL } from '../constants';
 
 interface SubstitutePageProps {
   user: User;
+  users: User[];
 }
 
 const ABSENCE_REASONS = [
@@ -16,12 +18,11 @@ const ABSENCE_REASONS = [
   'Tham gia phong trào'
 ];
 
-const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
+const SubstitutePage: React.FC<SubstitutePageProps> = ({ user, users }) => {
   const [substitutes, setSubstitutes] = useState<SubstituteRequest[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
   const isAdmin = user.role === UserRole.TCM || user.role === UserRole.TP;
 
   const [formData, setFormData] = useState({
@@ -39,11 +40,6 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
       fetch(`${SCRIPT_URL}?type=substitutes`)
         .then(res => res.json())
         .then(data => { if (Array.isArray(data)) setSubstitutes(data); })
-        .catch(e => console.error(e));
-      
-      fetch(`${SCRIPT_URL}?type=users`)
-        .then(res => res.json())
-        .then(data => { if (Array.isArray(data)) setUsers(data); })
         .catch(e => console.error(e));
     } catch (e) {
       console.error(e);

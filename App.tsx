@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, SystemNotification } from './types';
 import { ADMIN_EMAIL, ADMIN_PASS, ADMIN_USERNAME, SCRIPT_URL } from './constants';
@@ -14,6 +15,25 @@ import LessonPlanPage from './pages/LessonPlanPage';
 const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
 const GRADES = [6, 7, 8, 9];
 const CLASSES = [1, 2, 3, 4, 5, 6];
+
+// Helper để đảm bảo dữ liệu luôn là mảng
+const ensureArray = (val: any): string[] => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        // ignore JSON error
+      }
+    }
+    // Nếu không phải JSON array, coi như là 1 phần tử
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+};
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -37,8 +57,17 @@ const App: React.FC = () => {
     fetch(`${SCRIPT_URL}?type=users`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) setUsers(data);
-        else console.warn("Dữ liệu Users không phải mảng:", data);
+        if (Array.isArray(data)) {
+          // Làm sạch dữ liệu trước khi set state để tránh lỗi .map()
+          const sanitizedUsers = data.map((u: any) => ({
+            ...u,
+            assignedClasses: ensureArray(u.assignedClasses),
+            duties: ensureArray(u.duties)
+          }));
+          setUsers(sanitizedUsers);
+        } else {
+          console.warn("Dữ liệu Users không phải mảng:", data);
+        }
       })
       .catch(err => console.error("Lỗi tải Users:", err));
 
@@ -242,8 +271,8 @@ const App: React.FC = () => {
       {activeTab === 'dashboard' && <Dashboard user={currentUser} year={currentYear} notifications={notifications} onRefresh={fetchData} onUpdateProfile={(u) => { setCurrentUser(u); fetchData(); }} />}
       {activeTab === 'schedule' && <SchedulePage user={currentUser} />}
       {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={handleChangeRole} onDeleteUser={fetchData} onRefresh={fetchData} />}
-      {activeTab === 'substitute' && <SubstitutePage user={currentUser} />}
-      {activeTab === 'competition' && <CompetitionPage user={currentUser} />}
+      {activeTab === 'substitute' && <SubstitutePage user={currentUser} users={users} />}
+      {activeTab === 'competition' && <CompetitionPage user={currentUser} users={users} />}
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}
       {activeTab === 'documents' && <DocumentPage user={currentUser} />}
       {activeTab === 'lessonPlan' && <LessonPlanPage user={currentUser} users={users} />}
