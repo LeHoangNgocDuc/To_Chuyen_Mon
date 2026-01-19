@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, DocStatus, Document as DocType } from '../types';
-import { SCRIPT_URL, DRIVE_FOLDER_ID, GOOGLE_CLIENT_ID, getGoogleClientId } from '../constants';
+import { SCRIPT_URL, DRIVE_FOLDER_ID, getGoogleClientId } from '../constants';
 
 interface DocumentPageProps {
   user: User;
@@ -37,7 +37,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       const res = await fetch(`${SCRIPT_URL}?type=documents`);
       const data = await res.json();
       if (Array.isArray(data)) {
-        // Lọc theo năm học hoặc các tiêu chí khác nếu cần
         setDocs(data);
       }
     } catch (e) {
@@ -88,7 +87,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       return alert('Google Client ID không hợp lệ!');
     }
     localStorage.setItem('THD_GOOGLE_CLIENT_ID', clientId);
-    alert('Đã lưu cấu hình Client ID! Hệ thống sẽ tự động tải lại.');
+    alert('Đã lưu cấu hình Client ID! Hệ thống sẽ tải lại.');
     setShowSettings(false);
     window.location.reload();
   };
@@ -96,7 +95,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
   const handleUpload = () => {
     if (!isConfigValid) return setShowSettings(true);
     if (!formData.title) return alert('Vui lòng nhập tiêu đề tài liệu!');
-    if (!selectedFile) return alert('Vui lòng chọn tệp từ máy tính!');
+    if (!selectedFile) return alert('Vui lòng chọn tệp (PDF, RAR, ZIP, Word, Excel...)!');
 
     if (!tokenClientRef.current) return alert('Hệ thống xác thực Google đang khởi tạo...');
 
@@ -120,9 +119,13 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
     try {
       if (!selectedFile) return;
 
+      // Xử lý tên file để tránh trùng lặp và dễ tìm kiếm
+      const safeFileName = `[${formData.category}] ${formData.title}_${selectedFile.name}`.replace(/[\/\\?%*:|"<>]/g, '-');
+      
       const metadata = {
-        name: `[${formData.category}] ${formData.title}_${selectedFile.name}`,
-        mimeType: selectedFile.type,
+        name: safeFileName,
+        // Nếu file không có mimeType (như .rar đôi khi), gán mặc định octet-stream để Drive tự xử lý
+        mimeType: selectedFile.type || 'application/octet-stream',
         parents: [DRIVE_FOLDER_ID]
       };
 
@@ -132,16 +135,16 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json; charset=UTF-8',
-          'X-Upload-Content-Type': selectedFile.type,
+          'X-Upload-Content-Type': selectedFile.type || 'application/octet-stream',
           'X-Upload-Content-Length': selectedFile.size.toString(),
         },
         body: JSON.stringify(metadata),
       });
 
       const uploadUrl = initRes.headers.get('Location');
-      if (!uploadUrl) throw new Error('Không thể khởi tạo đường truyền Drive.');
+      if (!uploadUrl) throw new Error('Không thể khởi tạo đường truyền Drive. Vui lòng thử lại.');
 
-      // BƯỚC 3: Upload tệp với XHR để theo dõi tiến trình
+      // BƯỚC 3: Upload tệp
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', uploadUrl, true);
       xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
@@ -160,12 +163,12 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           await saveToDatabase(driveFile.id);
         } else {
           setIsUploading(false);
-          alert('Lỗi tải tệp lên Drive. Vui lòng thử lại.');
+          alert('Lỗi tải tệp lên Drive: ' + xhr.statusText);
         }
       };
 
       xhr.onerror = () => {
-        alert('Lỗi kết nối. Vui lòng kiểm tra mạng.');
+        alert('Lỗi kết nối mạng.');
         setIsUploading(false);
       };
 
@@ -194,7 +197,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
           status: DocStatus.Approved,
           uploadDate: new Date().toLocaleDateString('vi-VN'),
           fileSize: selectedFile?.size,
-          fileMime: selectedFile?.type,
+          fileMime: selectedFile?.type || 'application/octet-stream',
           fileUrl: fileUrl,
         }
       };
@@ -211,13 +214,21 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         setIsUploading(false);
         setShowUpload(false);
         setSelectedFile(null);
-        alert('Tài liệu đã được đăng lên Thư viện thành công!');
+        alert('Nộp tài liệu thành công!');
         fetchDocs();
       }, 500);
     } catch (error) {
       console.error(error);
       setIsUploading(false);
     }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '0 KB';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const filteredDocs = docs.filter(d => 
@@ -230,11 +241,11 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-800 uppercase italic tracking-tight">Thư viện Tài liệu</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Hệ thống nộp & Tải tài liệu Tổ Toán - Tin</p>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Hệ thống lưu trữ chuyên môn Tổ Toán - Tin</p>
         </div>
         <div className="flex gap-3">
           {user.role === UserRole.TCM && (
-            <button onClick={() => setShowSettings(true)} className="bg-white border border-slate-200 text-slate-400 p-4 rounded-2xl hover:text-slate-800 transition-all">
+            <button onClick={() => setShowSettings(true)} className="bg-white border border-slate-200 text-slate-400 p-4 rounded-2xl hover:text-slate-800 transition-all shadow-sm">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
           )}
@@ -248,7 +259,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Tabs danh mục */}
       <div className="bg-white p-2 rounded-[2.8rem] border border-slate-100 shadow-sm flex items-center w-fit overflow-x-auto max-w-full">
         {['Đề cương', 'Đề thi', 'Chuyên đề'].map((cat: any) => (
           <button 
@@ -261,7 +271,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         ))}
       </div>
 
-      {/* Danh sách tài liệu */}
       <div className="bg-white rounded-[3rem] border border-slate-200 shadow-2xl overflow-hidden min-h-[500px]">
         {activeCategory !== 'Chuyên đề' && (
           <div className="p-8 bg-slate-50/50 border-b border-slate-100 flex flex-wrap gap-3 items-center">
@@ -290,7 +299,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
               <thead>
                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/30">
                   <th className="p-10 w-[45%]">Tên tài liệu</th>
-                  <th className="p-10 text-center">Khối / Loại</th>
+                  <th className="p-10 text-center">Thông tin</th>
                   <th className="p-10">Người nộp</th>
                   <th className="p-10 text-right">Tải về</th>
                 </tr>
@@ -313,7 +322,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                     </td>
                     <td className="p-10 text-center">
                        <div className="text-sm font-black text-slate-700">KHỐI {doc.grade}</div>
-                       <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">Năm học 2024-2025</div>
+                       <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">{formatFileSize(doc.fileSize)}</div>
                     </td>
                     <td className="p-10">
                        <div className="text-sm font-black text-slate-700">{doc.authorName}</div>
@@ -339,7 +348,6 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Modal Cấu hình (Dành cho Admin nếu chưa cấu hình Client ID) */}
       {showSettings && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-2xl flex items-center justify-center z-[60] p-6">
            <div className="bg-white rounded-[4rem] shadow-2xl max-w-lg w-full p-12 animate-in zoom-in duration-300">
@@ -347,7 +355,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
               <div className="space-y-6">
                 <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 text-center">
                   <p className="text-[11px] text-blue-800 font-bold leading-relaxed">
-                    Dán <strong>OAuth 2.0 Client ID</strong> từ Google Cloud Console vào đây để kích hoạt tính năng nộp bài.
+                    Admin cần nhập <strong>OAuth 2.0 Client ID</strong> để kích hoạt tính năng upload.
                   </p>
                 </div>
                 <div>
@@ -363,12 +371,11 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
         </div>
       )}
 
-      {/* Modal Nộp bài */}
       {showUpload && (
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-2xl flex items-center justify-center z-50 p-6 overflow-y-auto">
            <div className="bg-white rounded-[4rem] shadow-2xl max-w-xl w-full p-12 animate-in zoom-in duration-300">
               <div className="flex items-center justify-between mb-10">
-                <h3 className="text-2xl font-black text-slate-800 uppercase italic tracking-tighter">Nộp tài liệu trực tiếp</h3>
+                <h3 className="text-2xl font-black text-slate-800 uppercase italic tracking-tighter">Nộp tài liệu</h3>
                 <button onClick={() => !isUploading && setShowUpload(false)} className="text-slate-300 hover:text-slate-900">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -377,7 +384,7 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
               <div className="space-y-8">
                 <div>
                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-2 tracking-widest italic">Tiêu đề tài liệu</label>
-                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none shadow-inner" placeholder="VD: Ôn tập chương 1 Toán 9" />
+                   <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-50 border border-slate-100 focus:border-indigo-500 rounded-[1.8rem] p-6 text-sm font-bold outline-none shadow-inner" placeholder="VD: Ôn tập Đại số 9 HK I" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
@@ -405,14 +412,21 @@ const DocumentPage: React.FC<DocumentPageProps> = ({ user }) => {
                      selectedFile ? 'border-indigo-400 bg-indigo-50/30' : 'border-slate-100 bg-slate-50 hover:border-indigo-200'
                    }`}
                 >
-                   <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                   <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileChange} 
+                      className="hidden" 
+                      accept=".pdf,.rar,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                   />
                    <div className={`w-20 h-20 rounded-[2.2rem] flex items-center justify-center shadow-2xl transform group-hover:scale-110 transition-transform ${selectedFile ? 'bg-indigo-600 text-white shadow-indigo-500/40' : 'bg-white text-slate-300 shadow-slate-100'}`}>
                       <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                    </div>
                    <div className="text-center">
                      <span className="block text-[11px] font-black text-slate-800 uppercase tracking-widest italic">
-                       {selectedFile ? selectedFile.name : 'Nhấn để chọn tệp tài liệu'}
+                       {selectedFile ? selectedFile.name : 'Chọn File (PDF, RAR, ZIP, Word...)'}
                      </span>
+                     {selectedFile && <span className="text-[10px] text-indigo-500 font-bold block mt-1">{formatFileSize(selectedFile.size)}</span>}
                    </div>
                 </div>
 

@@ -41,6 +41,27 @@ export interface TeachingDemo {
   reporterId: string;
   note: string;
   session: 'Morning' | 'Afternoon';
+  // New fields
+  isCancelled?: boolean; // Bỏ tiết
+  isLate?: boolean; // Đến trễ
+  availableTeachers?: string[]; // Danh sách ID giáo viên trống tiết (để mời dự)
+}
+
+export interface LessonPlanComment {
+  id: string;
+  reviewerName: string;
+  content: string;
+  type: 'Đúng quy định' | 'Nộp trễ' | 'Thiếu HSKT' | 'Khác';
+  timestamp: string;
+}
+
+export interface LessonPlanReview {
+  id: string;
+  teacherId: string;
+  week: number;
+  planName: string; // Tên bài/phân môn
+  comments: LessonPlanComment[];
+  lastUpdated: string;
 }
 
 export interface SystemNotification {
@@ -88,6 +109,9 @@ export interface SubstituteRequest {
   className: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   pointsAwarded: number;
+  // New fields
+  adminNote?: string; // Ghi chú của TTCM (Bỏ tiết, sự cố...)
+  isFlagged?: boolean; // Đánh dấu có vấn đề
 }
 
 export enum DocStatus {

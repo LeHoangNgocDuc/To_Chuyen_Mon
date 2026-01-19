@@ -11,6 +11,7 @@ import SubstitutePage from './pages/SubstitutePage';
 import ReportPage from './pages/ReportPage';
 import AssignmentPage from './pages/AssignmentPage';
 import TeachingDemoPage from './pages/TeachingDemoPage';
+import LessonPlanPage from './pages/LessonPlanPage';
 
 const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
 const GRADES = [6, 7, 8, 9];
@@ -67,10 +68,8 @@ const App: React.FC = () => {
           data: updatedUser 
         })
       });
-      // Với no-cors, ta giả định thành công.
     } catch (e) {
       console.error("Approve error:", e);
-      // Nếu có lỗi mạng thật sự, báo và tải lại dữ liệu để khớp server
       alert('Lỗi kết nối khi lưu phê duyệt! Hệ thống sẽ đồng bộ lại.');
       fetchData();
     }
@@ -218,6 +217,7 @@ const App: React.FC = () => {
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}
       {activeTab === 'documents' && <DocumentPage user={currentUser} />}
       {activeTab === 'reports' && <ReportPage user={currentUser} year={currentYear} />}
+      {activeTab === 'lessonPlan' && <LessonPlanPage user={currentUser} users={users} />}
     </Layout>
   );
 };

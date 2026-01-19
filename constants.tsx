@@ -8,14 +8,13 @@ export const ADMIN_USERNAME = 'Anphuc';
 // URL Script Google Apps Script để ghi log vào Sheet
 export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8yqrg9CgMJ3eUShUfPWY01JTZrJaQgAuyqiB6_vileLBgw_ZGuFvd8BN/exec';
 
-// ID thư mục đích trên Google Drive (Đã cập nhật theo yêu cầu của bạn)
+// ID thư mục đích trên Google Drive
 export const DRIVE_FOLDER_ID = '1drU0oZOez7T5G0vxEqyipD4TqVlnTfFk';
 
 /**
  * GOOGLE CLIENT ID:
- * 1. Tạo tại Google Cloud Console -> Credentials.
- * 2. Loại "Web application".
- * 3. Thêm Authorized origin: https://to-chuyen-mon.vercel.app
+ * Đây là mã định danh ứng dụng để cho phép upload file.
+ * Nếu chưa có, Admin cần tạo tại Google Cloud Console.
  */
 export const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
 

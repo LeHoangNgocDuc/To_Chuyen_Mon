@@ -23,6 +23,7 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const isAdmin = user.role === UserRole.TCM || user.role === UserRole.TP;
 
   const [formData, setFormData] = useState({
     absentTeacherId: '',
@@ -73,7 +74,22 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
     }
   };
 
-  const mySubs = substitutes.filter(s => s.substituteTeacherId === user.id).length;
+  const handleAdminFlag = async (sub: SubstituteRequest, note: string) => {
+    if (!isAdmin) return;
+    const isFlagged = !sub.isFlagged;
+    const updatedSub = { ...sub, isFlagged, adminNote: isFlagged ? note : '' };
+    
+    // Optimistic update
+    setSubstitutes(prev => prev.map(s => s.id === sub.id ? updatedSub : s));
+
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({ type: 'substitutes', action: 'save', data: updatedSub })
+    });
+  };
+
+  const mySubs = substitutes.filter(s => s.substituteTeacherId === user.id && !s.isFlagged).length;
   const myAbs = substitutes.filter(s => s.absentTeacherId === user.id).length;
 
   return (
@@ -117,21 +133,41 @@ const SubstitutePage: React.FC<SubstitutePageProps> = ({ user }) => {
                   <th className="p-6">GV Nghỉ</th>
                   <th className="p-6">GV Dạy Thay</th>
                   <th className="p-6">Chi tiết</th>
-                  <th className="p-6">Lý do</th>
+                  <th className="p-6">Trạng thái (Admin)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {substitutes.map(sub => (
-                  <tr key={sub.id} className="hover:bg-slate-50/50">
+                  <tr key={sub.id} className={`hover:bg-slate-50/50 ${sub.isFlagged ? 'bg-red-50 opacity-75' : ''}`}>
                     <td className="p-6 text-slate-500 font-bold text-xs">{sub.date}</td>
                     <td className="p-6 font-black text-slate-800 text-sm">
                       {users.find(u => u.id === sub.absentTeacherId)?.name || sub.absentTeacherId}
+                      <div className="text-[9px] text-slate-400 font-normal mt-1">{sub.reason}</div>
                     </td>
                     <td className="p-6">
                       <div className="font-black text-blue-600 text-sm">{users.find(u => u.id === sub.substituteTeacherId)?.name || sub.substituteTeacherId}</div>
                     </td>
                     <td className="p-6 text-slate-600 text-xs font-bold">Lớp {sub.className} <span className="mx-1">•</span> Tiết {sub.period}</td>
-                    <td className="p-6"><span className="px-3 py-1 bg-slate-100 rounded-full text-[9px] font-black uppercase text-slate-500">{sub.reason}</span></td>
+                    <td className="p-6">
+                       {isAdmin ? (
+                          <div className="flex items-center gap-2">
+                             <button 
+                                onClick={() => handleAdminFlag(sub, 'Bỏ tiết/Sự cố')}
+                                className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border transition-all ${
+                                   sub.isFlagged 
+                                   ? 'bg-red-600 text-white border-red-600' 
+                                   : 'bg-white text-slate-400 border-slate-200 hover:border-red-400 hover:text-red-500'
+                                }`}
+                             >
+                                {sub.isFlagged ? 'Đã báo lỗi' : 'Báo lỗi'}
+                             </button>
+                          </div>
+                       ) : (
+                          sub.isFlagged 
+                          ? <span className="text-red-500 text-[10px] font-black uppercase">Sự cố/Bỏ tiết</span> 
+                          : <span className="text-emerald-500 text-[10px] font-black uppercase">Đã thực hiện</span>
+                       )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
