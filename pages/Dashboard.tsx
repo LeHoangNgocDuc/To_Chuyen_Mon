@@ -31,7 +31,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     tempSubject: user.subject || 'Toán',
     tempGrade: 6,
     tempClass: 1,
-    assignedClasses: [...(user.assignedClasses || [])]
+    assignedClasses: [...(user.assignedClasses || [])],
+    isChuNhiem: user.isChuNhiem || false
   });
 
   const handlePostNotif = async () => {
@@ -81,7 +82,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
     const updatedUser = { 
       ...user, 
       assignedClasses: editData.assignedClasses,
-      subject: editData.assignedClasses[0]?.split(' ')[0] || user.subject
+      subject: editData.assignedClasses[0]?.split(' ')[0] || user.subject,
+      isChuNhiem: editData.isChuNhiem
     };
 
     try {
@@ -113,10 +115,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
             <div className="mt-8 flex gap-3">
               <span className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10">{user.role}</span>
               <span className="px-5 py-2 bg-blue-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/30">{user.subject}</span>
+              {user.isChuNhiem && <span className="px-5 py-2 bg-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/30">Chủ nhiệm</span>}
             </div>
           </div>
           <button onClick={() => {
-            setEditData({ ...editData, assignedClasses: [...(user.assignedClasses || [])], tempSubject: user.subject });
+            setEditData({ 
+              ...editData, 
+              assignedClasses: [...(user.assignedClasses || [])], 
+              tempSubject: user.subject,
+              isChuNhiem: user.isChuNhiem || false
+            });
             setShowProfileModal(true);
           }} className="mt-8 md:mt-0 px-6 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-white/20 transition-all active:scale-95 shadow-lg shadow-blue-900/40">
             Sửa phân công dạy
@@ -191,6 +199,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
                           <button type="button" onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-blue-100">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={editData.isChuNhiem} onChange={e => setEditData({...editData, isChuNhiem: e.target.checked})} className="w-5 h-5 rounded-lg border-blue-200 text-blue-600 cursor-pointer" id="editIsChuNhiem" />
+                      <label htmlFor="editIsChuNhiem" className="text-[11px] font-black text-slate-500 uppercase cursor-pointer">Tôi là giáo viên chủ nhiệm</label>
                     </div>
                   </div>
                 </div>

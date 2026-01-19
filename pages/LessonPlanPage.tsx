@@ -1,6 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, LessonPlanReview } from '../types';
 import { SCRIPT_URL } from '../constants';
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, BorderStyle, TextRun, AlignmentType, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
 
 interface LessonPlanPageProps {
   user: User;
@@ -12,6 +15,7 @@ const LessonPlanPage: React.FC<LessonPlanPageProps> = ({ user, users }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   const canReview = user.role === UserRole.TCM || user.role === UserRole.TP;
 
@@ -99,6 +103,140 @@ const LessonPlanPage: React.FC<LessonPlanPageProps> = ({ user, users }) => {
     }
   };
 
+  const handleExportWord = async () => {
+    if (!selectedTeacherId) return;
+    setIsExporting(true);
+
+    try {
+      const teacherName = users.find(u => u.id === selectedTeacherId)?.name || "Giáo viên";
+      const teacherReviews = reviews
+        .filter(r => r.teacherId === selectedTeacherId)
+        .sort((a, b) => a.week - b.week);
+
+      if (teacherReviews.length === 0) {
+        alert("Giáo viên này chưa có nhận xét nào để xuất file.");
+        setIsExporting(false);
+        return;
+      }
+
+      // Tạo các hàng cho bảng
+      const tableRows = teacherReviews.map(review => {
+        // Gom tất cả comment trong tuần đó thành các đoạn văn
+        const commentParagraphs = review.comments.map(cmt => {
+            return new Paragraph({
+                children: [
+                    new TextRun({
+                        text: `${cmt.reviewerName} (${cmt.timestamp}): `,
+                        bold: true,
+                        size: 22, // 11pt
+                    }),
+                    new TextRun({
+                        text: `[${cmt.type}] `,
+                        bold: true,
+                        color: cmt.type === 'Đúng quy định' ? "008000" : "FF0000",
+                        size: 22,
+                    }),
+                    new TextRun({
+                        text: cmt.content,
+                        size: 22,
+                    })
+                ],
+                spacing: { after: 100 } // Khoảng cách giữa các comment
+            });
+        });
+
+        return new TableRow({
+            children: [
+                new TableCell({
+                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ text: review.week.toString(), alignment: AlignmentType.CENTER })],
+                }),
+                new TableCell({
+                    width: { size: 30, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ text: review.planName })],
+                }),
+                new TableCell({
+                    width: { size: 60, type: WidthType.PERCENTAGE },
+                    children: commentParagraphs.length > 0 ? commentParagraphs : [new Paragraph("Chưa có nhận xét")],
+                }),
+            ],
+        });
+      });
+
+      // Tạo Header bảng
+      const headerRow = new TableRow({
+          children: [
+              new TableCell({
+                  children: [new Paragraph({ text: "Tuần", bold: true, alignment: AlignmentType.CENTER })],
+                  shading: { fill: "E0E0E0" },
+              }),
+              new TableCell({
+                  children: [new Paragraph({ text: "Tên bài dạy / Phân môn", bold: true, alignment: AlignmentType.CENTER })],
+                  shading: { fill: "E0E0E0" },
+              }),
+              new TableCell({
+                  children: [new Paragraph({ text: "Nội dung kiểm tra & Nhận xét", bold: true, alignment: AlignmentType.CENTER })],
+                  shading: { fill: "E0E0E0" },
+              }),
+          ],
+      });
+
+      const doc = new Document({
+        sections: [{
+            properties: {},
+            children: [
+                new Paragraph({
+                    text: "TỔNG HỢP NHẬN XÉT KẾ HOẠCH BÀI DẠY",
+                    heading: HeadingLevel.HEADING_1,
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 300 },
+                }),
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: "Tổ chuyên môn: ", bold: true }),
+                        new TextRun({ text: "Toán - Tin" }),
+                    ],
+                }),
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: "Giáo viên được kiểm tra: ", bold: true }),
+                        new TextRun({ text: teacherName }),
+                    ],
+                    spacing: { after: 300 },
+                }),
+                new Table({
+                    rows: [headerRow, ...tableRows],
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                    },
+                }),
+                new Paragraph({
+                    text: `Ngày xuất báo cáo: ${new Date().toLocaleDateString('vi-VN')}`,
+                    alignment: AlignmentType.RIGHT,
+                    spacing: { before: 400 },
+                    italics: true,
+                }),
+            ],
+        }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `Nhan_xet_KHBD_${teacherName.replace(/\s/g, '_')}.docx`);
+
+    } catch (error) {
+      console.error("Export Error:", error);
+      alert("Có lỗi xảy ra khi xuất file Word.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const selectedTeacher = users.find(u => u.id === selectedTeacherId);
   const teacherReviews = reviews.filter(r => r.teacherId === selectedTeacherId).sort((a,b) => b.week - a.week);
 
@@ -138,11 +276,25 @@ const LessonPlanPage: React.FC<LessonPlanPageProps> = ({ user, users }) => {
                 <h2 className="text-2xl font-black text-slate-800 uppercase italic">Kế hoạch bài dạy</h2>
                 <p className="text-slate-500 text-xs font-bold mt-1">Giáo viên: {selectedTeacher.name} • {selectedTeacher.assignedClasses?.join(', ')}</p>
               </div>
-              {canReview && (
-                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-200">
-                   Chế độ: Tổ trưởng/Tổ phó
-                 </div>
-              )}
+              <div className="flex gap-3">
+                 <button 
+                    onClick={handleExportWord} 
+                    disabled={isExporting}
+                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 active:scale-95 transition-all"
+                 >
+                    {isExporting ? (
+                        <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    )}
+                    Xuất File Word
+                 </button>
+                 {canReview && (
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-200 flex items-center">
+                    Chế độ: Tổ trưởng/Tổ phó
+                    </div>
+                 )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8">
