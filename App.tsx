@@ -8,7 +8,6 @@ import SchedulePage from './pages/SchedulePage';
 import CompetitionPage from './pages/CompetitionPage';
 import DocumentPage from './pages/DocumentPage';
 import SubstitutePage from './pages/SubstitutePage';
-import ReportPage from './pages/ReportPage';
 import AssignmentPage from './pages/AssignmentPage';
 import TeachingDemoPage from './pages/TeachingDemoPage';
 import LessonPlanPage from './pages/LessonPlanPage';
@@ -211,12 +210,11 @@ const App: React.FC = () => {
     <Layout user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} currentYear={currentYear} setCurrentYear={setCurrentYear}>
       {activeTab === 'dashboard' && <Dashboard user={currentUser} year={currentYear} notifications={notifications} onRefresh={fetchData} onUpdateProfile={(u) => { setCurrentUser(u); fetchData(); }} />}
       {activeTab === 'schedule' && <SchedulePage user={currentUser} />}
-      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={(id, r) => { fetchData(); }} onDeleteUser={fetchData} />}
+      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={(id, r) => { fetchData(); }} onDeleteUser={fetchData} onRefresh={fetchData} />}
       {activeTab === 'substitute' && <SubstitutePage user={currentUser} />}
       {activeTab === 'competition' && <CompetitionPage user={currentUser} />}
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}
       {activeTab === 'documents' && <DocumentPage user={currentUser} />}
-      {activeTab === 'reports' && <ReportPage user={currentUser} year={currentYear} />}
       {activeTab === 'lessonPlan' && <LessonPlanPage user={currentUser} users={users} />}
     </Layout>
   );

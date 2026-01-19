@@ -1,7 +1,14 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, UserRole, TeacherScoreRow } from '../types';
 import { SCRIPT_URL } from '../constants';
+
+const DEFAULT_SCORES: Omit<TeacherScoreRow, 'teacherId'> = {
+  tt: 0, dn: 0, sh: 0, nq: 0, qt: 0,
+  ga: 0, sd: 0, dg: 0, lbg: 0, tb: 0, dt_hsss: 0,
+  ngc: 0, bc: 0, dt_ngaycong: 0,
+  tg: 0, thct: 0, clbm: 0, dt_ctcm: 0,
+  chuNhiem: 0, kiemNhiem: 0, congTacKhac: 0
+};
 
 interface CompetitionPageProps {
   user: User;
@@ -85,11 +92,8 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
       .filter(u => u.role !== UserRole.BGH)
       .map(u => {
         const s = scores[u.id] || { 
-          tt: 0, dn: 0, sh: 0, nq: 0, qt: 0, 
-          ga: 0, sd: 0, dg: 0, lbg: 0, tb: 0, dt_hsss: 0,
-          ngc: 0, bc: 0, dt_ngaycong: 0,
-          tg: 0, thct: 0, clbm: 0, dt_ctcm: 0,
-          chuNhiem: 0, kiemNhiem: 0, congTacKhac: 0
+          teacherId: u.id,
+          ...DEFAULT_SCORES
         };
         const totalA = (s.tt || 0) + (s.dn || 0) + (s.sh || 0) + (s.nq || 0) + (s.qt || 0);
         const totalHSSS = (s.ga || 0) + (s.sd || 0) + (s.dg || 0) + (s.lbg || 0) + (s.tb || 0) + (s.dt_hsss || 0);
@@ -105,13 +109,13 @@ const CompetitionPage: React.FC<CompetitionPageProps> = ({ user }) => {
     setScores(prev => ({
       ...prev,
       [teacherId]: {
-        ...(prev[teacherId] || { teacherId }),
-        [field]: value
+        ...(prev[teacherId] || { teacherId, ...DEFAULT_SCORES }),
+        [field]: value as any
       }
     }));
   };
 
-  const currentEntryScore = scores[selectedTeacherId] || { teacherId: selectedTeacherId };
+  const currentEntryScore = scores[selectedTeacherId] || { teacherId: selectedTeacherId, ...DEFAULT_SCORES };
 
   return (
     <div className="space-y-6 max-w-[100vw] overflow-hidden">

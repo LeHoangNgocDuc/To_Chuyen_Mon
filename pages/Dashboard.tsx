@@ -123,58 +123,40 @@ const Dashboard: React.FC<DashboardProps> = ({ user, year, notifications, onRefr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-           <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl p-10">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">Thông báo Tổ</h3>
-              {(user.role === UserRole.TCM || user.role === UserRole.TP) && (
-                <button onClick={() => setShowNotifModal(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">Đăng tin mới</button>
-              )}
-            </div>
-            <div className="space-y-6">
-              {notifications.length > 0 ? notifications.map(notif => (
-                <div key={notif.id} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 hover:border-blue-200 transition-all group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 shadow-sm">{notif.senderName.charAt(0)}</div>
-                      <div>
-                         <div className="text-sm font-black text-slate-800">{notif.senderName}</div>
-                         <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{notif.role} • {notif.date}</div>
-                      </div>
+      <div className="w-full">
+         <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl p-10">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight">Thông báo Tổ</h3>
+            {(user.role === UserRole.TCM || user.role === UserRole.TP) && (
+              <button onClick={() => setShowNotifModal(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">Đăng tin mới</button>
+            )}
+          </div>
+          <div className="space-y-6">
+            {notifications.length > 0 ? notifications.map(notif => (
+              <div key={notif.id} className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 hover:border-blue-200 transition-all group">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-blue-600 shadow-sm">{notif.senderName.charAt(0)}</div>
+                    <div>
+                       <div className="text-sm font-black text-slate-800">{notif.senderName}</div>
+                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{notif.role} • {notif.date}</div>
                     </div>
-                    {notif.isImportant && <span className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-[8px] font-black uppercase">Quan trọng</span>}
                   </div>
-                  <p className="text-slate-600 font-bold leading-relaxed mb-4 italic">{notif.content}</p>
-                  {notif.executionTime && (
-                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200">
-                      <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <span className="text-[10px] font-black text-slate-500 uppercase">Hạn thực hiện: <span className="text-orange-600">{notif.executionTime}</span></span>
-                    </div>
-                  )}
+                  {notif.isImportant && <span className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-[8px] font-black uppercase">Quan trọng</span>}
                 </div>
-              )) : (
-                <div className="py-20 text-center font-black text-slate-300 italic uppercase">Chưa có thông báo mới</div>
-              )}
-            </div>
-           </div>
-        </div>
-
-        <div className="space-y-8">
-           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl">
-             <h3 className="text-lg font-black text-slate-800 uppercase italic mb-6">Trạng thái</h3>
-             <div className="space-y-4">
-                <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 shadow-sm">
-                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1 italic">Điểm thi đua</div>
-                  <div className="text-4xl font-black text-blue-600 tracking-tighter">189.4</div>
-                </div>
-                <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 shadow-sm">
-                  <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1 italic">Xếp hạng tổ</div>
-                  <div className="text-4xl font-black text-emerald-600 tracking-tighter">#2</div>
-                </div>
-             </div>
-           </div>
-        </div>
+                <p className="text-slate-600 font-bold leading-relaxed mb-4 italic">{notif.content}</p>
+                {notif.executionTime && (
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span className="text-[10px] font-black text-slate-500 uppercase">Hạn thực hiện: <span className="text-orange-600">{notif.executionTime}</span></span>
+                  </div>
+                )}
+              </div>
+            )) : (
+              <div className="py-20 text-center font-black text-slate-300 italic uppercase">Chưa có thông báo mới</div>
+            )}
+          </div>
+         </div>
       </div>
 
       {showProfileModal && (
