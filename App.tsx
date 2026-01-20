@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, SystemNotification } from './types';
+import { User, UserRole, SystemNotification, StaffPosition } from './types';
 import { ADMIN_EMAIL, ADMIN_PASS, ADMIN_USERNAME, SCRIPT_URL } from './constants';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -46,7 +46,9 @@ const App: React.FC = () => {
 
   const [regData, setRegData] = useState({
     name: '', username: '', email: '', password: '',
-    role: UserRole.GV, tempSubject: 'Toán', tempGrade: 6, tempClass: 1, isChuNhiem: false
+    role: UserRole.GV, 
+    staffPosition: StaffPosition.NONE,
+    tempSubject: 'Toán', tempGrade: 6, tempClass: 1, isChuNhiem: false
   });
   const [assignedClasses, setAssignedClasses] = useState<string[]>([]);
 
@@ -106,13 +108,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: UserRole) => {
-    const targetUser = users.find(u => u.id === userId);
-    if (!targetUser) return;
-    const updatedUser = { ...targetUser, role: newRole };
-    
-    // Optimistic Update
-    setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+  const handleUpdateUser = async (updatedUser: User) => {
+    // Check duplicates if assignedClasses changed
+    for (const cls of updatedUser.assignedClasses || []) {
+      const isTaken = users.some(u => 
+        u.id !== updatedUser.id && 
+        u.assignedClasses?.includes(cls)
+      );
+      if (isTaken) {
+         alert(`Lớp ${cls} đã được phân công cho giáo viên khác!`);
+         return;
+      }
+    }
+
+    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    if (currentUser?.id === updatedUser.id) setCurrentUser(updatedUser);
 
     try {
       await fetch(SCRIPT_URL, {
@@ -122,14 +132,45 @@ const App: React.FC = () => {
         body: JSON.stringify({ type: 'users', action: 'save', data: updatedUser })
       });
     } catch (e) {
-      console.error("Role change error:", e);
-      alert('Lỗi khi lưu thay đổi vai trò!');
+      alert('Lỗi lưu dữ liệu!');
       fetchData();
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa thành viên này? Hành động này không thể hoàn tác!')) return;
+
+    // Optimistic UI update
+    setUsers(prev => prev.filter(u => u.id !== userId));
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ type: 'users', action: 'delete', data: { id: userId } })
+      });
+      alert('Đã xóa thành viên khỏi hệ thống.');
+    } catch (e) {
+      alert('Lỗi khi xóa dữ liệu!');
+      fetchData(); // Rollback if error
+    }
+  };
+
+  const checkClassConflict = (entry: string) => {
+    // Kiểm tra xem lớp này đã có GV nào dạy môn này chưa
+    const conflict = users.find(u => u.assignedClasses?.includes(entry));
+    if (conflict) {
+      alert(`Lớp ${entry} đã được phân công cho giáo viên ${conflict.name}. Vui lòng kiểm tra lại!`);
+      return true;
+    }
+    return false;
+  };
+
   const addAssignment = () => {
     const entry = `${regData.tempSubject} ${regData.tempGrade}/${regData.tempClass}`;
+    if (checkClassConflict(entry)) return;
+
     if (!assignedClasses.includes(entry)) {
       setAssignedClasses([...assignedClasses, entry]);
     }
@@ -141,7 +182,9 @@ const App: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (assignedClasses.length === 0) return alert('Vui lòng thêm ít nhất một phân công lớp dạy!');
+    if (regData.role === UserRole.GV && assignedClasses.length === 0) {
+      return alert('Giáo viên vui lòng chọn ít nhất một lớp phân công!');
+    }
     
     const newUser: User = {
       id: `u-${Date.now()}`,
@@ -150,9 +193,10 @@ const App: React.FC = () => {
       email: regData.email,
       password: regData.password,
       role: regData.role,
-      subject: assignedClasses[0]?.split(' ')[0] || regData.tempSubject,
+      staffPosition: regData.role === UserRole.NV ? regData.staffPosition : undefined,
+      subject: regData.role === UserRole.NV ? 'Văn phòng' : (assignedClasses[0]?.split(' ')[0] || regData.tempSubject),
       isApproved: false,
-      assignedClasses,
+      assignedClasses: regData.role === UserRole.GV ? assignedClasses : [],
       duties: [],
       isChuNhiem: regData.isChuNhiem
     };
@@ -167,6 +211,7 @@ const App: React.FC = () => {
       setUsers([...users, newUser]);
       alert('Đăng ký thành công! Vui lòng chờ Tổ trưởng phê duyệt.');
       setIsRegistering(false);
+      setAssignedClasses([]);
     } catch (e) {
       alert('Lỗi đăng ký!');
     }
@@ -211,38 +256,61 @@ const App: React.FC = () => {
                 <input required type="text" placeholder="Tên đăng nhập" value={regData.username} onChange={e => setRegData({...regData, username: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" />
                 <input required type="email" placeholder="Email" value={regData.email} onChange={e => setRegData({...regData, email: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" />
                 
-                <div className="p-5 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 space-y-3">
-                  <div className="text-[10px] font-black text-blue-800 uppercase italic tracking-widest">Phân công chuyên môn</div>
-                  <div className="space-y-2">
-                    <select value={regData.tempSubject} onChange={e => setRegData({...regData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-black text-blue-600 outline-none">
-                      {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <div className="flex gap-2">
-                      <select value={regData.tempGrade} onChange={e => setRegData({...regData, tempGrade: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
-                        {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
-                      </select>
-                      <select value={regData.tempClass} onChange={e => setRegData({...regData, tempClass: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
-                        {CLASSES.map(c => <option key={c} value={c}>Lớp {c}</option>)}
-                      </select>
-                      <button type="button" onClick={addAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg active:scale-90">+</button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100">
-                    {assignedClasses.length > 0 ? assignedClasses.map(item => (
-                      <div key={item} className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-200 text-blue-600 rounded-xl text-[10px] font-black shadow-sm">
-                        {item}
-                        <button type="button" onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
-                      </div>
-                    )) : (
-                      <div className="text-[9px] text-slate-400 italic">Chưa thêm phân công nào</div>
-                    )}
-                  </div>
+                {/* Role Selection */}
+                <div className="flex gap-4 p-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="role" checked={regData.role === UserRole.GV} onChange={() => setRegData({...regData, role: UserRole.GV})} />
+                    <span className="text-sm font-bold text-slate-600">Giáo viên</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="role" checked={regData.role === UserRole.NV} onChange={() => setRegData({...regData, role: UserRole.NV})} />
+                    <span className="text-sm font-bold text-slate-600">Nhân viên</span>
+                  </label>
                 </div>
 
-                <div className="flex items-center gap-3 px-2">
-                  <input type="checkbox" checked={regData.isChuNhiem} onChange={e => setRegData({...regData, isChuNhiem: e.target.checked})} className="w-5 h-5 rounded-lg border-slate-300 text-blue-600" id="isChuNhiem" />
-                  <label htmlFor="isChuNhiem" className="text-[11px] font-black text-slate-500 uppercase cursor-pointer">Tôi là giáo viên chủ nhiệm</label>
-                </div>
+                {regData.role === UserRole.NV && (
+                  <div>
+                    <select value={regData.staffPosition} onChange={e => setRegData({...regData, staffPosition: e.target.value as StaffPosition})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none">
+                      <option value={StaffPosition.NONE}>-- Chọn vị trí --</option>
+                      <option value={StaffPosition.THIET_BI}>Nhân viên Thiết bị</option>
+                      <option value={StaffPosition.THU_VIEN}>Nhân viên Thư viện</option>
+                    </select>
+                  </div>
+                )}
+
+                {regData.role === UserRole.GV && (
+                  <div className="p-5 bg-blue-50/50 rounded-[2rem] border-2 border-blue-100 space-y-3">
+                    <div className="text-[10px] font-black text-blue-800 uppercase italic tracking-widest">Phân công chuyên môn</div>
+                    <div className="space-y-2">
+                      <select value={regData.tempSubject} onChange={e => setRegData({...regData, tempSubject: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-black text-blue-600 outline-none">
+                        {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <div className="flex gap-2">
+                        <select value={regData.tempGrade} onChange={e => setRegData({...regData, tempGrade: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
+                          {GRADES.map(g => <option key={g} value={g}>Khối {g}</option>)}
+                        </select>
+                        <select value={regData.tempClass} onChange={e => setRegData({...regData, tempClass: parseInt(e.target.value)})} className="flex-1 bg-white border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none">
+                          {CLASSES.map(c => <option key={c} value={c}>Lớp {c}</option>)}
+                        </select>
+                        <button type="button" onClick={addAssignment} className="bg-blue-600 text-white px-5 rounded-xl font-black shadow-lg active:scale-90">+</button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-blue-100">
+                      {assignedClasses.length > 0 ? assignedClasses.map(item => (
+                        <div key={item} className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-200 text-blue-600 rounded-xl text-[10px] font-black shadow-sm">
+                          {item}
+                          <button type="button" onClick={() => removeAssignment(item)} className="text-red-400 hover:text-red-600 font-black">×</button>
+                        </div>
+                      )) : (
+                        <div className="text-[9px] text-slate-400 italic">Chưa thêm phân công nào</div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 px-2 mt-2 pt-2 border-t border-blue-100">
+                      <input type="checkbox" checked={regData.isChuNhiem} onChange={e => setRegData({...regData, isChuNhiem: e.target.checked})} className="w-5 h-5 rounded-lg border-slate-300 text-blue-600" id="isChuNhiem" />
+                      <label htmlFor="isChuNhiem" className="text-[11px] font-black text-slate-500 uppercase cursor-pointer">Tôi là giáo viên chủ nhiệm</label>
+                    </div>
+                  </div>
+                )}
 
                 <input required type="password" placeholder="Mật khẩu" value={regData.password} onChange={e => setRegData({...regData, password: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold outline-none" />
               </>
@@ -270,7 +338,7 @@ const App: React.FC = () => {
     <Layout user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => setCurrentUser(null)} currentYear={currentYear} setCurrentYear={setCurrentYear}>
       {activeTab === 'dashboard' && <Dashboard user={currentUser} year={currentYear} notifications={notifications} onRefresh={fetchData} onUpdateProfile={(u) => { setCurrentUser(u); fetchData(); }} />}
       {activeTab === 'schedule' && <SchedulePage user={currentUser} />}
-      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onChangeRole={handleChangeRole} onDeleteUser={fetchData} onRefresh={fetchData} />}
+      {activeTab === 'assignment' && <AssignmentPage user={currentUser} users={users} onApprove={handleApproveUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} onRefresh={fetchData} />}
       {activeTab === 'substitute' && <SubstitutePage user={currentUser} users={users} />}
       {activeTab === 'competition' && <CompetitionPage user={currentUser} users={users} />}
       {activeTab === 'demos' && <TeachingDemoPage user={currentUser} users={users} />}

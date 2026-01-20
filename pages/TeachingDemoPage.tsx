@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, TeachingDemo, ScheduleItem } from '../types';
 import { SCRIPT_URL } from '../constants';
 
@@ -18,7 +19,7 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
   const [formData, setFormData] = useState<Partial<TeachingDemo>>({
     week: 1,
     date: new Date().toISOString().split('T')[0],
-    period: 1,
+    period: 0,
     className: '',
     teacherId: user.id,
     tct: 1,
@@ -42,6 +43,23 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Tính thứ trong tuần từ ngày chọn (2-7, CN=8)
+  const getDayOfWeek = (dateStr: string) => {
+    const d = new Date(dateStr).getDay();
+    return d === 0 ? 8 : d + 1;
+  };
+
+  // Lọc các tiết dạy có trong lịch của giáo viên vào ngày đã chọn
+  const availableSlots = useMemo(() => {
+    if (!formData.date || !formData.teacherId) return [];
+    
+    const dow = getDayOfWeek(formData.date);
+    // Lọc lịch dạy của giáo viên (teacherId) vào thứ (dow)
+    return schedule
+      .filter(s => s.teacherId === formData.teacherId && s.dayOfWeek === dow)
+      .sort((a, b) => a.period - b.period);
+  }, [formData.date, formData.teacherId, schedule]);
+
   const getAvailableTeachers = (dayOfWeek: number, period: number, session: 'Morning' | 'Afternoon') => {
     // Tìm những GV KHÔNG có lịch dạy vào thời điểm này
     const busyTeacherIds = schedule
@@ -51,14 +69,8 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
     return users.filter(u => !busyTeacherIds.includes(u.id) && u.isApproved && u.role !== UserRole.NV);
   };
 
-  // Tính thứ trong tuần từ ngày chọn (2-7, CN=8)
-  const getDayOfWeek = (dateStr: string) => {
-    const d = new Date(dateStr).getDay();
-    return d === 0 ? 8 : d + 1;
-  };
-
   const handleSave = async () => {
-    if (!formData.lessonName || !formData.className) return alert('Vui lòng điền đủ thông tin bài dạy!');
+    if (!formData.lessonName || !formData.className || !formData.period) return alert('Vui lòng chọn tiết dạy và điền tên bài!');
     setIsSaving(true);
     
     const dayOfWeek = getDayOfWeek(formData.date || '');
@@ -205,16 +217,41 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Ngày dạy</label>
                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" />
                 </div>
-                <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Tiết dạy</label>
-                   <select value={formData.period} onChange={e => setFormData({...formData, period: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold">
-                      {[1,2,3,4,5].map(p => <option key={p} value={p}>Tiết {p}</option>)}
+                
+                <div className="col-span-2">
+                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Chọn tiết dạy (Theo TKB)</label>
+                   <select 
+                      value={formData.period && formData.className ? `${formData.period}-${formData.className}` : ''} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const [p, c] = val.split('-');
+                        const slot = availableSlots.find(s => s.period.toString() === p && s.className === c);
+                        if (slot) {
+                           setFormData({
+                             ...formData, 
+                             period: slot.period, 
+                             className: slot.className,
+                             session: slot.session
+                           });
+                        }
+                      }} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold"
+                   >
+                      <option value="">-- Chọn tiết dạy có trong lịch --</option>
+                      {availableSlots.length > 0 ? availableSlots.map(s => (
+                        <option key={`${s.period}-${s.className}`} value={`${s.period}-${s.className}`}>
+                           Tiết {s.period} - Lớp {s.className} ({s.subject}) - Buổi {s.session === 'Morning' ? 'Sáng' : 'Chiều'}
+                        </option>
+                      )) : (
+                        <option disabled>Không có lịch dạy vào ngày này</option>
+                      )}
                    </select>
+                   {availableSlots.length === 0 && formData.date && (
+                     <p className="mt-2 text-[10px] text-red-500 font-bold italic">* Bạn không có lịch dạy vào ngày {new Date(formData.date || '').toLocaleDateString('vi-VN')}</p>
+                   )}
                 </div>
-                <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Lớp</label>
-                   <input type="text" placeholder="VD: 9/1" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" />
-                </div>
+
                 <div className="col-span-2">
                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Tên bài dạy</label>
                    <input type="text" value={formData.lessonName} onChange={e => setFormData({...formData, lessonName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold" placeholder="VD: Bài toán về tỉ số phần trăm..." />
