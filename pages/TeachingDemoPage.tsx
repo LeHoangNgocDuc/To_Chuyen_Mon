@@ -89,6 +89,26 @@ const TeachingDemoPage: React.FC<TeachingDemoPageProps> = ({ user, users }) => {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ type: 'demos', action: 'save', data: dataToSave })
       });
+
+      // Create System Notification
+      const notifData = {
+        id: `notif-${Date.now()}`,
+        senderId: user.id,
+        senderName: user.name,
+        role: user.role,
+        content: `Giáo viên ${user.name} đăng ký thao giảng: ${formData.lessonName} (Tiết ${formData.period}, Lớp ${formData.className}, Ngày ${new Date(formData.date || '').toLocaleDateString('vi-VN')})`,
+        date: new Date().toLocaleDateString('vi-VN'),
+        sendEmailReminder: false,
+        isImportant: true
+      };
+
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ type: 'notifications', action: 'save', data: notifData })
+      });
+
       alert('Đăng ký thao giảng thành công!');
       setShowModal(false);
       fetchData();

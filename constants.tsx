@@ -1,8 +1,9 @@
+
 import { User, UserRole, ScheduleItem, Document, SubstituteRequest, SystemNotification, TeachingDemo } from './types';
 
 export const ADMIN_EMAIL = 'lehoangngocducnt@gmail.com';
 export const ADMIN_PASS = 'Anphuc01';
-export const ADMIN_USERNAME = 'Anphuc';
+export const ADMIN_USERNAME = 'Admin';
 
 // URL Script Google Apps Script để ghi log vào Sheet
 export const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRTznW9SHZ8yqrg9CgMJ3eUShUfPWY01JTZrJaQgAuyqiB6_vileLBgw_ZGuFvd8BN/exec';

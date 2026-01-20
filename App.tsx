@@ -12,7 +12,7 @@ import AssignmentPage from './pages/AssignmentPage';
 import TeachingDemoPage from './pages/TeachingDemoPage';
 import LessonPlanPage from './pages/LessonPlanPage';
 
-const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
+const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'HĐTN', 'Khác'];
 const GRADES = [6, 7, 8, 9];
 const CLASSES = [1, 2, 3, 4, 5, 6];
 
@@ -222,7 +222,7 @@ const App: React.FC = () => {
     // Admin Backdoor
     if (regData.username === ADMIN_USERNAME && regData.password === ADMIN_PASS) {
       setCurrentUser({
-        id: 'admin-001', name: 'Quản trị viên (An Phục)', username: ADMIN_USERNAME, email: ADMIN_EMAIL,
+        id: 'admin-001', name: 'Quản trị viên', username: ADMIN_USERNAME, email: ADMIN_EMAIL,
         role: UserRole.TCM, subject: 'Toán', isApproved: true, assignedClasses: [], duties: ['Tổ trưởng chuyên môn']
       });
       return;
@@ -243,10 +243,10 @@ const App: React.FC = () => {
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 font-sans">
-        <div className="bg-white p-10 rounded-[3.5rem] shadow-2xl max-w-md w-full border border-slate-100 overflow-y-auto max-h-[95vh]">
+        <div className="bg-white p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl max-w-md w-full border border-slate-100 overflow-y-auto max-h-[95vh]">
            <div className="mb-8 flex flex-col items-center">
             <div className="w-16 h-16 bg-blue-600 rounded-[1.8rem] flex items-center justify-center text-white text-2xl font-black shadow-2xl shadow-blue-500/30 transform rotate-6 mb-4">THĐ</div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight italic">{isRegistering ? 'Đăng ký' : 'Tổ Toán-Tin'}</h1>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight italic text-center">{isRegistering ? 'Đăng ký' : 'Tổ Toán-Tin'}</h1>
           </div>
           
           <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">

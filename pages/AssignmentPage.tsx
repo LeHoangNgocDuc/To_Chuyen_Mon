@@ -11,7 +11,7 @@ interface AssignmentPageProps {
   onRefresh: () => void;
 }
 
-const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'Khác'];
+const SUBJECT_OPTIONS = ['Toán', 'Tin học', 'Công nghệ', 'HĐTN', 'Khác'];
 const GRADES = [6, 7, 8, 9];
 const CLASSES = [1, 2, 3, 4, 5, 6];
 
